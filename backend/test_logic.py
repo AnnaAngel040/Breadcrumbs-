@@ -254,3 +254,82 @@ def test_linguistic_intensity_and_fused_score():
     assert "fused_stress_score" in fused
     assert fused["fused_stress_score"] >= 0.5
 
+
+# ─── Account layer tests ──────────────────────────────────────────────────────
+
+import tempfile, os
+from app.database import (
+    init_db, create_account, get_account,
+    upsert_therapist_profile, get_therapist_profile,
+    link_therapist_patient, get_patients_for_therapist,
+    insert_entry,
+)
+from app.report import build_patient_overview
+
+
+def _tmp_db():
+    """Returns a path to a fresh in-memory-style temp SQLite file."""
+    fd, path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    init_db(db_path=path)
+    return path
+
+
+def test_create_and_get_account():
+    db = _tmp_db()
+    acc = create_account("u1", "Alice", role="patient", db_path=db)
+    assert acc["user_id"] == "u1"
+    assert acc["role"] == "patient"
+
+    fetched = get_account("u1", db_path=db)
+    assert fetched["display_name"] == "Alice"
+
+
+def test_create_account_duplicate_is_idempotent():
+    db = _tmp_db()
+    create_account("u2", "Bob", role="patient", db_path=db)
+    # Second call with same user_id must not raise (INSERT OR IGNORE)
+    create_account("u2", "Bobby", role="patient", db_path=db)
+    fetched = get_account("u2", db_path=db)
+    assert fetched["display_name"] == "Bob"   # first write wins
+
+
+def test_therapist_profile_upsert():
+    db = _tmp_db()
+    create_account("t1", "Dr. Nair", role="therapist", db_path=db)
+    profile = upsert_therapist_profile(
+        "t1", "Anxiety", tier="premium", modes=["online", "offline"],
+        city="Bangalore", lat=12.97, lng=77.59, db_path=db,
+    )
+    assert profile["specialty"] == "Anxiety"
+    assert "offline" in profile["modes"]
+
+    fetched = get_therapist_profile("t1", db_path=db)
+    assert fetched["city"] == "Bangalore"
+    assert fetched["lat"] == pytest.approx(12.97, abs=0.01)
+
+
+def test_therapist_patient_link_and_list():
+    db = _tmp_db()
+    create_account("t2", "Dr. Sharma", role="therapist", db_path=db)
+    create_account("p1", "Patient One", role="patient", db_path=db)
+    link = link_therapist_patient("t2", "p1", db_path=db)
+    assert link["therapist_id"] == "t2"
+    assert link["patient_id"] == "p1"
+
+    patients = get_patients_for_therapist("t2", db_path=db)
+    assert len(patients) == 1
+    assert patients[0]["patient_id"] == "p1"
+
+
+def test_patient_overview_no_entries():
+    """User with zero entries should get a stable/empty overview — no crash."""
+    result = build_patient_overview("user_who_has_never_logged_anything_at_all")
+    assert "wellbeing_label" in result
+    assert "trend_summary" in result
+    assert result["active_area_count"] == 0
+    assert result["show_crisis_resources"] is False
+
+
+import pytest
+

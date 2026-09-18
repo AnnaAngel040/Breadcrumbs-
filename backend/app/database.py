@@ -19,7 +19,7 @@ SCHEMA = """
 CREATE TABLE IF NOT EXISTS entries (
     entry_id TEXT PRIMARY KEY,
     user_id TEXT NOT NULL,
-    date TEXT NOT NULL,              -- ISO 8601 timestamp
+    date TEXT NOT NULL,
     transcript TEXT NOT NULL,
     category TEXT NOT NULL,
     reason TEXT,
@@ -28,8 +28,37 @@ CREATE TABLE IF NOT EXISTS entries (
     similarity_group_id TEXT
 );
 
+CREATE TABLE IF NOT EXISTS accounts (
+    user_id TEXT PRIMARY KEY,
+    display_name TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'patient',   -- 'patient' or 'therapist'
+    email TEXT,
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS therapist_profiles (
+    therapist_id TEXT PRIMARY KEY,          -- same as accounts.user_id
+    specialty TEXT NOT NULL,
+    tier TEXT NOT NULL DEFAULT 'standard',
+    modes TEXT NOT NULL DEFAULT 'online',   -- comma-separated: 'online', 'offline'
+    address TEXT,
+    city TEXT,
+    lat REAL,
+    lng REAL,
+    rating REAL DEFAULT 4.5
+);
+
+CREATE TABLE IF NOT EXISTS therapist_patient_links (
+    therapist_id TEXT NOT NULL,
+    patient_id TEXT NOT NULL,
+    linked_at TEXT NOT NULL,
+    PRIMARY KEY (therapist_id, patient_id)
+);
+
 CREATE INDEX IF NOT EXISTS idx_entries_user ON entries (user_id);
 CREATE INDEX IF NOT EXISTS idx_entries_user_category ON entries (user_id, category);
+CREATE INDEX IF NOT EXISTS idx_links_therapist ON therapist_patient_links (therapist_id);
+CREATE INDEX IF NOT EXISTS idx_links_patient ON therapist_patient_links (patient_id);
 """
 
 
@@ -161,3 +190,109 @@ def get_all_user_ids(db_path: str = DB_PATH) -> list[str]:
     with get_conn(db_path) as conn:
         rows = conn.execute("SELECT DISTINCT user_id FROM entries").fetchall()
     return [r["user_id"] for r in rows]
+
+
+# ─── Account management ──────────────────────────────────────────────────────
+
+def create_account(
+    user_id: str,
+    display_name: str,
+    role: str = "patient",
+    email: Optional[str] = None,
+    db_path: str = DB_PATH,
+) -> dict:
+    """Create a patient or therapist account. role must be 'patient' or 'therapist'."""
+    if role not in ("patient", "therapist"):
+        raise ValueError(f"Invalid role: {role!r}. Must be 'patient' or 'therapist'.")
+    created_at = datetime.now(timezone.utc).isoformat()
+    with get_conn(db_path) as conn:
+        conn.execute(
+            "INSERT OR IGNORE INTO accounts (user_id, display_name, role, email, created_at) VALUES (?,?,?,?,?)",
+            (user_id, display_name, role, email, created_at),
+        )
+        conn.commit()
+    return {"user_id": user_id, "display_name": display_name, "role": role, "email": email, "created_at": created_at}
+
+
+def get_account(user_id: str, db_path: str = DB_PATH) -> Optional[dict]:
+    with get_conn(db_path) as conn:
+        row = conn.execute("SELECT * FROM accounts WHERE user_id = ?", (user_id,)).fetchone()
+    return dict(row) if row else None
+
+
+# ─── Therapist profile management ────────────────────────────────────────────
+
+def upsert_therapist_profile(
+    therapist_id: str,
+    specialty: str,
+    tier: str = "standard",
+    modes: list = None,
+    address: Optional[str] = None,
+    city: Optional[str] = None,
+    lat: Optional[float] = None,
+    lng: Optional[float] = None,
+    rating: float = 4.5,
+    db_path: str = DB_PATH,
+) -> dict:
+    modes_str = ",".join(modes or ["online"])
+    with get_conn(db_path) as conn:
+        conn.execute(
+            """INSERT OR REPLACE INTO therapist_profiles
+               (therapist_id, specialty, tier, modes, address, city, lat, lng, rating)
+               VALUES (?,?,?,?,?,?,?,?,?)""",
+            (therapist_id, specialty, tier, modes_str, address, city, lat, lng, rating),
+        )
+        conn.commit()
+    return {"therapist_id": therapist_id, "specialty": specialty, "tier": tier,
+            "modes": (modes or ["online"]), "address": address, "city": city,
+            "lat": lat, "lng": lng, "rating": rating}
+
+
+def get_therapist_profile(therapist_id: str, db_path: str = DB_PATH) -> Optional[dict]:
+    with get_conn(db_path) as conn:
+        row = conn.execute(
+            "SELECT * FROM therapist_profiles WHERE therapist_id = ?", (therapist_id,)
+        ).fetchone()
+    if not row:
+        return None
+    d = dict(row)
+    d["modes"] = [m.strip() for m in d["modes"].split(",")]
+    return d
+
+
+# ─── Therapist–Patient link management ───────────────────────────────────────
+
+def link_therapist_patient(therapist_id: str, patient_id: str, db_path: str = DB_PATH) -> dict:
+    linked_at = datetime.now(timezone.utc).isoformat()
+    with get_conn(db_path) as conn:
+        conn.execute(
+            "INSERT OR IGNORE INTO therapist_patient_links (therapist_id, patient_id, linked_at) VALUES (?,?,?)",
+            (therapist_id, patient_id, linked_at),
+        )
+        conn.commit()
+    return {"therapist_id": therapist_id, "patient_id": patient_id, "linked_at": linked_at}
+
+
+def get_patients_for_therapist(therapist_id: str, db_path: str = DB_PATH) -> list[dict]:
+    """Returns all patients linked to a therapist, with their account display_name if available."""
+    with get_conn(db_path) as conn:
+        rows = conn.execute(
+            """SELECT l.patient_id, l.linked_at, a.display_name, a.email
+               FROM therapist_patient_links l
+               LEFT JOIN accounts a ON l.patient_id = a.user_id
+               WHERE l.therapist_id = ?
+               ORDER BY l.linked_at ASC""",
+            (therapist_id,),
+        ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def get_therapist_for_patient(patient_id: str, db_path: str = DB_PATH) -> Optional[str]:
+    """Returns the therapist_id linked to a patient (first one if multiple)."""
+    with get_conn(db_path) as conn:
+        row = conn.execute(
+            "SELECT therapist_id FROM therapist_patient_links WHERE patient_id = ? LIMIT 1",
+            (patient_id,),
+        ).fetchone()
+    return row["therapist_id"] if row else None
+

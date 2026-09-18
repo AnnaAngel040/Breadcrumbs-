@@ -1,81 +1,132 @@
-﻿# Backend API — Handoff for Person A (Model Specialist)
+﻿# Handoff for Person A — ML Model Trainer
 
-This document specifies the exact contract, runtime expectations, and validation procedures between **Person A** (DistilBERT Stress Classification Model) and **Person B** (Backend & Pipeline).
+## Your Role in This Project
+
+You train the **binary stress classifier** that sits at the heart of our pipeline.
+Your model receives a transcribed diary entry (plain text) and returns two numbers:
+- `stress_score` — float in [0.0, 1.0] — how stressed this entry sounds
+- `confidence` — float in [0.0, 1.0] — how certain the model is
+
+Person B (backend) calls your endpoint in every diary entry pipeline run.
+Person C (frontend) never calls your model directly.
 
 ---
 
-## 1. Scope Clarification: What Person A Owns vs. What Person B Owns
+## API Contract — What You Must Expose
 
-- **Person A owns**: Binary stress detection ($0 = \text{unstressed}, 1 = \text{stressed}$). You output a continuous probability $P(\text{stress})$ and model confidence.
-- **Person B owns**: All 8-category topic classification (*Work/Career, Academics, Relationship, Family, Friends/Social, Health, Finances, Self-esteem/Identity*). 
-  > **Note**: You do **not** need to fine-tune DistilBERT to output categories. Dreaddit does not cover this taxonomy; Person B handles categorization through a dedicated NLP layer (`app/categorize.py`).
+**Endpoint:** `POST /predict`
+**Default URL:** `http://localhost:8001/predict`  (set `MODEL_API_URL` in `.env` to change)
 
----
-
-## 2. API Contract (Locked)
-
-Person B's pipeline calls your model over HTTP. Your service must expose:
-
-### Endpoint
-```http
-POST /predict
-Content-Type: application/json
+### Request body (JSON)
+```json
+{ "text": "I have been so overwhelmed at work lately..." }
 ```
 
-### Request Payload
+### Response body (JSON)
 ```json
 {
-  "transcript": "I have three midterms next week and my manager just scheduled an emergency weekend shift. I cannot sleep."
+  "stress_score": 0.82,
+  "confidence": 0.91
 }
 ```
 
-### Required Response Payload
-```json
-{
-  "stress_score": 0.842,
-  "confidence": 0.915
-}
+### Hard rules
+| Constraint | Value |
+|---|---|
+| `stress_score` type | float, range [0.0, 1.0] |
+| `confidence` type | float, range [0.0, 1.0] |
+| HTTP status on success | 200 |
+| HTTP status on empty/bad text | 422 |
+| Max latency acceptable | < 2 s per call |
+| Extra fields in response | Allowed — backend ignores them |
+
+### What happens if your endpoint is down
+Backend reads `USE_MOCK_MODEL` env var.  If `true`, it uses a deterministic mock
+that returns `{"stress_score": 0.5, "confidence": 0.9}`.  This keeps everything
+runnable without your endpoint during development.
+
+---
+
+## What the Backend Does With Your Output
+
+```
+Your model output
+      │
+      ▼
+stress_score ──────────────────────────────────────────► stored in SQLite entries table
+      │
+      ▼
+Optional fusion with linguistic intensity (Person B, ENABLE_SENTIMENT_FUSION=true):
+  fused_score = model_weight * stress_score + (1 - model_weight) * linguistic_score
+  (model_weight defaults to 0.7, so your model always dominates)
+      │
+      ▼
+Severity tier computed:
+  flagged  → score ≥ 0.85  AND  trend == "escalating"  AND  3+ active stressors
+  high     → score ≥ 0.70  AND  trend == "escalating"  AND  2+ active stressors
+  moderate → score ≥ 0.50
+  low      → everything else
+  Crisis keywords override tier to "flagged" instantly (e.g. "want to die", "suicide")
+      │
+      ▼
+Time-decay recency weighting:
+  w_i = exp(-λ * Δt),  λ = ln(2) / half_life_days  (default half_life = 7 days)
+  Entries from today have full weight; 7-day-old entries have half weight.
 ```
 
-### Key Requirements
-1. **`stress_score` (float in $[0.0, 1.0]$)**:
-   - This must be the **calibrated probability** of the positive stress class, computed via Softmax or Sigmoid over your DistilBERT classification head:
-     $$P(\text{stress} = 1 \mid x) = \frac{1}{1 + e^{-(z_{\text{stressed}} - z_{\text{unstressed}})}}$$
-   - Please do not send hardcoded binary integers `0` or `1`. Person B's downstream trend and severity engines rely on continuous gradients (e.g. $0.51$ vs $0.85$).
-2. **`confidence` (float in $[0.5, 1.0]$)**:
-   - The probability of the predicted class: $\max(P(\text{unstressed}), P(\text{stressed}))$.
-3. **Latency**:
-   - Keep inference latency under $500\text{ ms}$ on CPU/GPU to maintain responsive audio diary ingestion.
+---
+
+## Domain Shift Warning
+
+Our app targets **workplace/student stress in Indian urban contexts**.
+Your training data should ideally include:
+- Statements about deadlines, managers, exams, financial pressure, family expectations
+- Code-switched phrases (English-Hindi, e.g. "bahut zyada kaam hai")
+- South Asian names and cultural references
+
+If you use an open dataset (e.g. DAIC-WOZ, AVEC), please note it's from a
+different demographic and the model may under-detect culturally-framed stress.
+Consider fine-tuning on a small synthetic dataset for a few epochs.
 
 ---
 
-## 3. How Person B Connects to Your Live Model
+## Validation Script
 
-Once your FastAPI / Flask endpoint is running:
-
-1. Open `backend/.env` (or copy from `.env.example`).
-2. Set your server's address:
-   ```env
-   MODEL_API_URL=http://localhost:8001/predict
-   USE_MOCK_MODEL=false
-   ```
-3. That is all. Person B's `model_client.py` will route all transcribed user diaries to your model.
-
----
-
-## 4. Domain Shift Validation Test
-
-Because your model was trained on Reddit text (Dreaddit) but will be evaluated on spoken diary transcripts, Person B has built an automated domain-shift evaluation harness:
+When your endpoint is running:
 
 ```bash
-# Run this from the backend folder with your model live:
-python domain_shift_validation.py
+curl -X POST http://localhost:8001/predict \
+  -H "Content-Type: application/json" \
+  -d "{\"text\": \"I am extremely stressed about my deadline\"}"
+# Expected: stress_score > 0.6
+
+curl -X POST http://localhost:8001/predict \
+  -H "Content-Type: application/json" \
+  -d "{\"text\": \"Had a great relaxing day, feeling calm\"}"
+# Expected: stress_score < 0.4
 ```
 
-- Tests 20 hand-labeled spoken-audio diary style samples (10 stressed / 10 unstressed).
-- Reports:
-  - **Accuracy** (target: $\ge 80\%$)
-  - **False Positive Rate** (crucial: non-stressed complaints shouldn't falsely trigger high severity)
-  - **False Negative Rate** (crucial: genuine distress must be caught)
+Or run the backend integration test:
+```bash
+USE_MOCK_MODEL=false MODEL_API_URL=http://localhost:8001 python -m pytest test_logic.py -v -k "not account and not overview"
+```
 
-If you have questions or field name differences (e.g., `stressScore` vs `stress_score`), inform Person B and it can be normalized inside `app/model_client.py:_normalize()`.
+---
+
+## Required ENV Vars (set in backend .env)
+
+```
+MODEL_API_URL=http://localhost:8001/predict   # your endpoint
+USE_MOCK_MODEL=false                          # set true during dev without your server
+```
+
+---
+
+## Files You Should Know About (backend)
+
+| File | What it does |
+|---|---|
+| `app/model_client.py` | Calls your endpoint; handles mock fallback |
+| `app/pipeline.py` | Orchestrates transcription → your model → categorize → store |
+| `app/sentiment_intensity.py` | Optional linguistic layer that fuses with your score |
+| `.env.example` | All env vars with descriptions |

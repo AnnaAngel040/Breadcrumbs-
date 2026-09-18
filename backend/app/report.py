@@ -83,3 +83,59 @@ def build_report(
         "crisis_resources_shown": final_severity == "flagged",
     }
 
+
+def build_patient_overview(user_id: str) -> dict:
+    """Generates a gentle, non-clinical wellness summary for the patient's own view.
+
+    Patients must never see raw stress scores, severity labels, or clinical language.
+    This function converts the clinical report into plain human language:
+      - 'You seem stressed today' instead of 'severity: high'
+      - 'Things look steady' instead of 'trend: stable'
+    """
+    full = build_report(user_id)
+    severity = full["overall_severity"]
+    stressors = full["stressors"]
+    crisis = full["crisis_resources_shown"]
+
+    entry_count = sum(s["entry_count"] for s in stressors)
+    active_area_count = len(stressors)
+    primary_area = stressors[0]["category"] if stressors else None
+
+    # Determine the primary trend across all active threads
+    trend_votes = [s["trend"] for s in stressors if s["trend"] != "insufficient_data"]
+    if not trend_votes:
+        dominant_trend = "insufficient_data"
+    elif trend_votes.count("escalating") >= len(trend_votes) / 2:
+        dominant_trend = "escalating"
+    elif trend_votes.count("improving") > trend_votes.count("stable"):
+        dominant_trend = "improving"
+    else:
+        dominant_trend = "stable"
+
+    # Human-readable wellness label (no clinical terms)
+    _label_map = {
+        "flagged":  "We're concerned about you — please reach out for help",
+        "high":     "You seem to be going through a lot right now",
+        "moderate": "You seem stressed today",
+        "low":      "Things look manageable today",
+    }
+    wellbeing_label = _label_map.get(severity, "Things look manageable today")
+
+    # Trend summary in plain language
+    _trend_map = {
+        "escalating":        "Stress has been building over the past week",
+        "improving":         "Things have been getting a little easier recently",
+        "stable":            "Your stress levels have been fairly steady",
+        "insufficient_data": "Not enough diary entries yet to see a pattern",
+    }
+    trend_summary = _trend_map.get(dominant_trend, "Not enough data yet")
+
+    return {
+        "user_id": user_id,
+        "wellbeing_label": wellbeing_label,
+        "active_area_count": active_area_count,
+        "primary_area": primary_area,
+        "trend_summary": trend_summary,
+        "show_crisis_resources": crisis,
+        "entry_count_last_14_days": entry_count,
+    }
