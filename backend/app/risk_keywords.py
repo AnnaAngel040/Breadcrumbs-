@@ -25,6 +25,12 @@ ACUTE_RISK_PHRASES = [
     "hurting myself",
     "hurt myself",
     "no way out",
+    "hit me",
+    "beat me",
+    "abusing me",
+    "abused me",
+    "domestic violence",
+    "physically hurt me",
 ]
 
 

@@ -99,14 +99,14 @@ export async function submitAudioEntry(userId, audioBlob) {
     const res = await fetch(`${BASE_URL}/entries/audio`, {
       method: 'POST',
       body: formData,
-      signal: AbortSignal.timeout(8000)
+      signal: AbortSignal.timeout(30000)
     });
     if (res.ok) return await res.json();
   } catch (e) {
-    console.warn('Backend audio endpoint unavailable, falling back to simulated transcript:', e.message);
+    console.warn('Backend audio endpoint error:', e.message);
   }
 
-  return submitTextEntry(userId, "I had a busy and thoughtful day, making progress step by step.");
+  return null;
 }
 
 export async function fetchUserEntries(userId) {
@@ -226,62 +226,62 @@ export async function fetchTherapists(userId, category = "Work/Career", options 
 
   return [
     {
-      id: "th_vance",
-      name: "Dr. Elena Vance, Psy.D",
+      id: "th_ananya",
+      name: "Dr. Ananya Sharma, Ph.D.",
       title: "Licensed Clinical Psychologist (12 yrs exp)",
       specialty: category,
       tier: "intensive",
       modes: ["online", "offline"],
-      address: "450 Sutter St, Suite 820, San Francisco, CA 94108",
-      city: "San Francisco",
+      address: "Indiranagar 100ft Road, Bengaluru, Karnataka 560038",
+      city: "Bengaluru",
+      phone: "+91 80 5550 1422",
       rating: 4.9,
       review_count: "124 mindful reviews",
       next_available: "Tomorrow at 2:00 PM",
-      price: "$140 / session (In-network)",
+      price: "₹1,500 / session",
       gender: "female",
-      insurances: ["BlueCross", "Aetna", "Out-of-network"],
+      insurances: ["Star Health", "HDFC ERGO", "Out-of-pocket"],
       sliding_scale: true,
-      match_percentage: 98,
       avatar_url: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=160&auto=format&fit=crop&q=80",
       bio: "Specializes in workplace burnout, somatic grounding, CBT boundary restructuring, and chronic fatigue restoration."
     },
     {
-      id: "th_thorne",
-      name: "Marcus Thorne, LMFT",
+      id: "th_rohit",
+      name: "Rohit Varma, M.Phil, RCI Reg.",
       title: "Mindfulness & High-Stress Dynamics (8 yrs exp)",
       specialty: category,
       tier: "standard",
       modes: ["online", "offline"],
-      address: "120 Montgomery St, San Francisco, CA 94104",
-      city: "San Francisco",
+      address: "Bandra West, Hill Road, Mumbai, Maharashtra 400050",
+      city: "Mumbai",
+      phone: "+91 22 4440 9811",
       rating: 4.8,
       review_count: "89 reviews",
       next_available: "Thursday at 10:30 AM",
-      price: "$125 / session",
+      price: "₹1,200 / session",
       gender: "male",
-      insurances: ["BlueCross", "Out-of-network"],
+      insurances: ["Care Health", "Out-of-pocket"],
       sliding_scale: true,
-      match_percentage: 95,
       avatar_url: "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=160&auto=format&fit=crop&q=80",
       bio: "Focuses on high-stakes career dynamics, mindfulness, and cognitive boundary restructuring."
     },
     {
-      id: "th_lin",
-      name: "Sophia Lin, LCSW",
+      id: "th_priya",
+      name: "Priya Menon, MSW, LCSW",
       title: "Holistic Stress & Somatic Therapist (10 yrs exp)",
       specialty: category,
       tier: "standard",
       modes: ["online"],
-      address: "Telehealth / Remote Consultation",
+      address: "Telehealth / Remote Consultation across India",
       city: "Online",
+      phone: "+91 80 6670 2345",
       rating: 5.0,
       review_count: "96 reviews",
       next_available: "Friday at 4:00 PM",
-      price: "$130 / session",
+      price: "₹1,000 / session",
       gender: "female",
-      insurances: ["Aetna", "Out-of-network"],
+      insurances: ["ICICI Lombard", "Out-of-pocket"],
       sliding_scale: true,
-      match_percentage: 92,
       avatar_url: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=160&auto=format&fit=crop&q=80",
       bio: "Holistic somatic therapist certified in nervous system restoration and tension de-escalation."
     }
