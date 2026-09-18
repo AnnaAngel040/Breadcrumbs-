@@ -22,6 +22,7 @@ CREATE TABLE IF NOT EXISTS entries (
     date TEXT NOT NULL,              -- ISO 8601 timestamp
     transcript TEXT NOT NULL,
     category TEXT NOT NULL,
+    reason TEXT,
     stress_score REAL NOT NULL,
     confidence REAL NOT NULL,
     similarity_group_id TEXT
@@ -35,6 +36,11 @@ CREATE INDEX IF NOT EXISTS idx_entries_user_category ON entries (user_id, catego
 def init_db(db_path: str = DB_PATH) -> None:
     with sqlite3.connect(db_path) as conn:
         conn.executescript(SCHEMA)
+        # Safe migration if table already exists without 'reason' column
+        cursor = conn.execute("PRAGMA table_info(entries)")
+        cols = [row[1] for row in cursor.fetchall()]
+        if "reason" not in cols:
+            conn.execute("ALTER TABLE entries ADD COLUMN reason TEXT")
         conn.commit()
 
 
@@ -54,6 +60,7 @@ def insert_entry(
     category: str,
     stress_score: float,
     confidence: float,
+    reason: Optional[str] = None,
     entry_date: Optional[str] = None,
     similarity_group_id: Optional[str] = None,
     db_path: str = DB_PATH,
@@ -66,8 +73,8 @@ def insert_entry(
             """
             INSERT INTO entries
                 (entry_id, user_id, date, transcript, category,
-                 stress_score, confidence, similarity_group_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                 reason, stress_score, confidence, similarity_group_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 entry_id,
@@ -75,6 +82,7 @@ def insert_entry(
                 entry_date,
                 transcript,
                 category,
+                reason,
                 stress_score,
                 confidence,
                 similarity_group_id,
@@ -88,6 +96,7 @@ def insert_entry(
         "date": entry_date,
         "transcript": transcript,
         "category": category,
+        "reason": reason,
         "stress_score": stress_score,
         "confidence": confidence,
         "similarity_group_id": similarity_group_id,

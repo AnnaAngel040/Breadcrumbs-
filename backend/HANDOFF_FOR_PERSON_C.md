@@ -1,4 +1,4 @@
-﻿# Backend API — Handoff for Person C (Frontend & NLP Specialist)
+# Backend API — Handoff for Person C (Frontend & NLP Specialist)
 
 Base URL (local dev): `http://127.0.0.1:8000`  
 Interactive Swagger Docs: `http://127.0.0.1:8000/docs`
@@ -59,12 +59,19 @@ GET /users/{user_id}/threads
     "entry_count": 8,
     "latest_score": 0.83,
     "current_decay_score": 0.724,
-    "active_stressor_count": 3
+    "active_stressor_count": 3,
+    "latest_reason": "manager assigning unmanageable workload",
+    "recent_triggers": [
+      "manager assigning unmanageable workload",
+      "emergency weekend shift"
+    ]
   }
 ]
 ```
 - `latest_score`: Most recent single diary check-in score ($0.0 - 1.0$).
 - `current_decay_score`: **Smoothed, time-decayed stress level** (7-day half-life exponential moving average). Use this for smoothed gauge meters!
+- `latest_reason`: Specific triggering detail extracted from the latest entry (e.g. `"manager assigning unmanageable workload"`).
+- `recent_triggers`: Up to 3 unique recent specific triggers causing distress in this category.
 - `trend`: `"escalating"`, `"improving"`, `"stable"`, or `"insufficient_data"`.
 
 ---

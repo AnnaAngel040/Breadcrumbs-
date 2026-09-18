@@ -42,8 +42,19 @@ def build_report(
     for category, thread_entries in threads.items():
         trend = compute_trend(thread_entries)
         severity = severity_for_thread(thread_entries, trend, num_active_stressors)
-        latest_score = sorted(thread_entries, key=lambda e: e["date"])[-1]["stress_score"]
+        sorted_thread = sorted(thread_entries, key=lambda e: e["date"])
+        latest_entry = sorted_thread[-1]
+        latest_score = latest_entry["stress_score"]
+        latest_reason = latest_entry.get("reason")
         current_decay_score = compute_time_decay_stress(thread_entries)
+
+        recent_triggers = []
+        for e in reversed(sorted_thread):
+            r = e.get("reason")
+            if r and r not in recent_triggers:
+                recent_triggers.append(r)
+            if len(recent_triggers) >= 3:
+                break
 
         stressor_summaries.append({
             "category": category,
@@ -53,6 +64,8 @@ def build_report(
             "latest_score": latest_score,
             "current_decay_score": current_decay_score,
             "active_stressor_count": num_active_stressors,
+            "latest_reason": latest_reason,
+            "recent_triggers": recent_triggers,
         })
         severities.append(severity)
 

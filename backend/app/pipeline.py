@@ -32,7 +32,9 @@ def process_text_entry(user_id: str, transcript: str) -> dict:
     """Skips transcription — used for the text-entry testing route, and
     internally by process_audio_entry() once it has a transcript."""
     prediction = model_client.get_stress_prediction(transcript)
-    category = categorize.categorize(transcript)
+    cat_result = categorize.categorize_with_reason(transcript)
+    category = cat_result["category"]
+    reason = cat_result.get("reason")
 
     stress_score = prediction["stress_score"]
     if ENABLE_SENTIMENT_FUSION:
@@ -44,6 +46,7 @@ def process_text_entry(user_id: str, transcript: str) -> dict:
         user_id=user_id,
         transcript=transcript,
         category=category,
+        reason=reason,
         stress_score=stress_score,
         confidence=prediction["confidence"],
     )

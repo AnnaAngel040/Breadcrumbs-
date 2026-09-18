@@ -19,7 +19,7 @@ from app.trends import compute_trend, compute_time_decay_stress
 from app.threading_logic import get_stressor_threads, refine_threads_with_similarity
 from app.matching import match_therapists, haversine_km
 from app.risk_keywords import check_acute_risk_keywords
-from app.categorize import categorize, CANONICAL_CATEGORIES
+from app.categorize import categorize, categorize_with_reason, CANONICAL_CATEGORIES
 from app.sentiment_intensity import analyze_linguistic_intensity, fuse_stress_score
 
 
@@ -166,6 +166,15 @@ def test_categorize_keyword_fallback_on_clear_examples():
     }
     for expected, text in cases.items():
         assert categorize(text) == expected
+
+
+def test_categorize_with_reason_returns_category_and_trigger():
+    res = categorize_with_reason("My manager keeps threatening to fire me over this project due date.")
+    assert "category" in res
+    assert "reason" in res
+    assert res["category"] == "Work/Career"
+    assert len(res["reason"]) > 3
+
 
 
 # ---------- location & mode matching (Haversine & filters) ----------

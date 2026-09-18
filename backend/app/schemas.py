@@ -22,6 +22,7 @@ class EntryOut(BaseModel):
     date: str
     transcript: str
     category: str
+    reason: Optional[str] = None
     stress_score: float
     confidence: float
     similarity_group_id: Optional[str] = None
@@ -35,6 +36,9 @@ class ThreadOut(BaseModel):
     latest_score: float
     current_decay_score: Optional[float] = None
     active_stressor_count: int
+    latest_reason: Optional[str] = None
+    recent_triggers: list[str] = []
+
 
 
 class ReportOut(BaseModel):

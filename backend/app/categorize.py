@@ -67,13 +67,24 @@ KEYWORDS = {
 }
 
 
-def _categorize_keyword(transcript: str) -> str:
+def _categorize_keyword(transcript: str) -> dict:
     lowered = transcript.lower()
-    scores = {cat: sum(kw in lowered for kw in kws) for cat, kws in KEYWORDS.items()}
+    scores = {}
+    matched_kws = {}
+    for cat, kws in KEYWORDS.items():
+        hits = [kw for kw in kws if kw in lowered]
+        scores[cat] = len(hits)
+        matched_kws[cat] = hits
+
     best_cat = max(scores, key=scores.get)
     if scores[best_cat] == 0:
-        return "Self-esteem/Identity" if "worthless" in lowered else "Health"  # safe generic default
-    return best_cat
+        best_cat = "Self-esteem/Identity" if "worthless" in lowered else "Health"
+        reason = "general health or self-esteem concern"
+    else:
+        kws_str = ", ".join(matched_kws[best_cat][:2])
+        reason = f"trigger: {kws_str}"
+
+    return {"category": best_cat, "reason": reason}
 
 
 # --- primary: LLM-based tagging -------------------------------------------
@@ -92,7 +103,7 @@ def _get_openai_client():
     return _client
 
 
-def _categorize_llm(transcript: str) -> str:
+def _categorize_llm(transcript: str) -> dict:
     client = _get_openai_client()
     categories_str = ", ".join(f'"{c}"' for c in CANONICAL_CATEGORIES)
 
@@ -103,15 +114,16 @@ def _categorize_llm(transcript: str) -> str:
                 "role": "system",
                 "content": (
                     "You classify a short diary entry into exactly one topic category "
-                    f"from this fixed list: [{categories_str}]. "
-                    "Respond with ONLY a JSON object like {\"category\": \"Work/Career\"} "
-                    "and nothing else. Pick the single closest category even if the entry "
-                    "touches on more than one."
+                    f"from this fixed list: [{categories_str}], and identify the specific triggering reason. "
+                    "Respond with ONLY a valid JSON object in this exact shape: "
+                    "{\"category\": \"Work/Career\", \"reason\": \"manager assigning unmanageable workload\"} "
+                    "where 'reason' is a concise 3-8 word phrase explaining the specific trigger or cause of stress. "
+                    "Pick the single closest category even if the entry touches on more than one."
                 ),
             },
             {"role": "user", "content": transcript},
         ],
-        max_tokens=30,
+        max_tokens=60,
         temperature=0,
     )
 
@@ -119,19 +131,23 @@ def _categorize_llm(transcript: str) -> str:
     # strip markdown code fences if the model adds them despite instructions
     raw = re.sub(r"^```(json)?|```$", "", raw.strip()).strip()
     parsed = json.loads(raw)
-    category = parsed["category"]
+    category = parsed.get("category", "").strip()
+    reason = parsed.get("reason", "").strip()
 
     if category not in CANONICAL_CATEGORIES:
         raise ValueError(f"LLM returned an out-of-taxonomy category: {category!r}")
 
-    return category
+    if not reason:
+        reason = f"trigger related to {category.lower()}"
+
+    return {"category": category, "reason": reason}
 
 
-# --- public entry point ----------------------------------------------------
+# --- public entry points ---------------------------------------------------
 
-def categorize(transcript: str) -> str:
-    """Returns one of CANONICAL_CATEGORIES. Tries the LLM path first (if
-    enabled and configured); falls back to keyword matching on any failure
+def categorize_with_reason(transcript: str) -> dict:
+    """Returns dict {'category': str, 'reason': str}. Tries the LLM path first
+    (if enabled and configured); falls back to keyword matching on any failure
     so this function never raises and never blocks the pipeline."""
     if USE_LLM_CATEGORIZATION:
         try:
@@ -140,3 +156,8 @@ def categorize(transcript: str) -> str:
             logger.warning("LLM categorization failed (%s); falling back to keyword matching.", e)
 
     return _categorize_keyword(transcript)
+
+
+def categorize(transcript: str) -> str:
+    """Convenience wrapper returning just the category string for backward compatibility."""
+    return categorize_with_reason(transcript)["category"]
