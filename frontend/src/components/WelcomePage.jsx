@@ -38,13 +38,6 @@ export default function WelcomePage({ onEnterAsPatient, onEnterAsTherapist }) {
     </View>
   );
 
-  const ProviderFeature = ({ text }) => (
-    <View style={styles.featureRow}>
-      <View style={[styles.featureBullet, { backgroundColor: '#9D7E6A' }]} />
-      <Text style={styles.featureText}>{text}</Text>
-    </View>
-  );
-
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
@@ -70,9 +63,6 @@ export default function WelcomePage({ onEnterAsPatient, onEnterAsTherapist }) {
             <TouchableOpacity onPress={() => openAuth('patient', 'signin')}>
               <Text style={styles.navLink}>Stress Insights</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => openAuth('therapist', 'signin')}>
-              <Text style={styles.navLink}>Find Care</Text>
-            </TouchableOpacity>
             <TouchableOpacity style={styles.signInBtn} onPress={() => openAuth('patient', 'signin')}>
               <Text style={styles.signInBtnText}>Sign In</Text>
             </TouchableOpacity>
@@ -95,24 +85,26 @@ export default function WelcomePage({ onEnterAsPatient, onEnterAsTherapist }) {
 
           {/* Individual / Member Card */}
           <View style={[styles.card, styles.memberCard]}>
-            <View style={styles.cardHeader}>
-              <View style={[styles.cardIconBox, { backgroundColor: '#F5E6DC' }]}>
-                <Text style={styles.cardIcon}>🤎</Text>
+            <View>
+              <View style={styles.cardHeader}>
+                <View style={[styles.cardIconBox, { backgroundColor: '#F5E6DC' }]}>
+                  <Text style={styles.cardIcon}>🤎</Text>
+                </View>
+                <Text style={styles.cardAudience}>For Seekers & Individuals</Text>
               </View>
-              <Text style={styles.cardAudience}>For Seekers & Individuals</Text>
+
+              <Text style={styles.cardTitle}>Individual / Member</Text>
+              <Text style={styles.cardDesc}>
+                I want to track stress, reflect on emotional crumbs, and connect with
+                thoughtful clinical guidance.
+              </Text>
+
+              <Text style={styles.featureListTitle}>YOUR MEMBER SANCTUARY INCLUDES</Text>
+              <MemberFeature text="Private, low-pressure daily check-ins & reflections" />
+              <MemberFeature text="Personal stress waveforms & somatic rhythm patterns" />
+              <MemberFeature text="Personalised, values-aligned therapist matching" />
+              <MemberFeature text="24/7 gentle grounding support & mindful breathaids" />
             </View>
-
-            <Text style={styles.cardTitle}>Individual / Member</Text>
-            <Text style={styles.cardDesc}>
-              I want to track stress, reflect on emotional crumbs, and connect with
-              thoughtful clinical guidance.
-            </Text>
-
-            <Text style={styles.featureListTitle}>YOUR MEMBER SANCTUARY INCLUDES</Text>
-            <MemberFeature text="Private, low-pressure daily check-ins & reflections" />
-            <MemberFeature text="Personal stress waveforms & somatic rhythm patterns" />
-            <MemberFeature text="Personalised, values-aligned therapist matching" />
-            <MemberFeature text="24/7 gentle grounding support & mindful breathaids" />
 
             <View style={styles.cardActions}>
               <TouchableOpacity
@@ -132,37 +124,27 @@ export default function WelcomePage({ onEnterAsPatient, onEnterAsTherapist }) {
 
           {/* Therapist / Counselor Card */}
           <View style={[styles.card, styles.therapistCard]}>
-            <View style={styles.cardHeader}>
-              <View style={[styles.cardIconBox, { backgroundColor: '#E8DAD3' }]}>
-                <Text style={styles.cardIcon}>🩺</Text>
+            <View>
+              <View style={styles.cardHeader}>
+                <View style={[styles.cardIconBox, { backgroundColor: '#E8DAD3' }]}>
+                  <Text style={styles.cardIcon}>🩺</Text>
+                </View>
+                <Text style={styles.cardAudience}>For Clinicians & Healers</Text>
               </View>
-              <Text style={styles.cardAudience}>For Clinicians & Healers</Text>
+
+              <Text style={styles.cardTitle}>Therapist / Counselor</Text>
+              <Text style={styles.cardDesc}>
+                I am a licensed professional supporting clients and cultivating
+                restorative clinical care.
+              </Text>
             </View>
-
-            <Text style={styles.cardTitle}>Therapist / Counselor</Text>
-            <Text style={styles.cardDesc}>
-              I am a licensed professional supporting clients and cultivating
-              restorative clinical care.
-            </Text>
-
-            <Text style={styles.featureListTitle}>PROVIDER WORKSPACE TOOLS</Text>
-            <ProviderFeature text="Client referral overview & verified caseload matching" />
-            <ProviderFeature text="HIPAA-compliant HD telehealth & async messaging" />
-            <ProviderFeature text="Patient stress timeline insights & trigger synthesis" />
-            <ProviderFeature text="Integrated practice calendar, super-bills & insurance billing" />
 
             <View style={styles.cardActions}>
               <TouchableOpacity
                 style={[styles.primaryBtn, styles.providerPrimaryBtn]}
                 onPress={() => openAuth('therapist', 'signin')}
               >
-                <Text style={styles.primaryBtnText}>Continue as Provider 🪪</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.secondaryBtn}
-                onPress={() => openAuth('therapist', 'signup')}
-              >
-                <Text style={styles.secondaryBtnText}>Apply to Join Network</Text>
+                <Text style={styles.primaryBtnText}>Continue as Provider →</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -206,7 +188,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 28,
-    paddingVertical: 14,
+    paddingVertical: 10,
     backgroundColor: '#E8D8D0',
   },
   navBrand: {
@@ -245,7 +227,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(74, 46, 24, 0.2)',
     borderRadius: 20,
     paddingHorizontal: 16,
-    paddingVertical: 7,
+    paddingVertical: 6,
   },
   signInBtnText: {
     fontSize: 13,
@@ -256,8 +238,8 @@ const styles = StyleSheet.create({
   // Hero
   heroBanner: {
     alignItems: 'center',
-    paddingTop: 28,
-    paddingBottom: 20,
+    paddingTop: 12,
+    paddingBottom: 14,
     paddingHorizontal: 20,
   },
   heroBadge: {
@@ -266,8 +248,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(255, 253, 249, 0.6)',
     borderRadius: 20,
     paddingHorizontal: 14,
-    paddingVertical: 5,
-    marginBottom: 10,
+    paddingVertical: 4,
+    marginBottom: 8,
   },
   heroBadgeText: {
     fontSize: 10,
@@ -276,19 +258,19 @@ const styles = StyleSheet.create({
     letterSpacing: 0.6,
   },
   heroTitle: {
-    fontSize: 34,
+    fontSize: 32,
     fontWeight: '700',
     color: '#4A2E18',
     fontFamily: 'Fraunces',
     textAlign: 'center',
-    marginBottom: 6,
+    marginBottom: 4,
     letterSpacing: -0.5,
   },
   heroSubtitle: {
-    fontSize: 15,
+    fontSize: 14,
     color: '#6B4423',
     textAlign: 'center',
-    lineHeight: 22,
+    lineHeight: 20,
     fontStyle: 'italic',
   },
 
@@ -306,7 +288,8 @@ const styles = StyleSheet.create({
     flex: 1,
     minWidth: 280,
     borderRadius: 20,
-    padding: 22,
+    padding: 24,
+    justifyContent: 'space-between',
     shadowColor: '#4A2E18',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.08,
@@ -383,21 +366,23 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   cardActions: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 20,
-    flexWrap: 'wrap',
+    flexDirection: 'column',
+    gap: 8,
+    marginTop: 22,
+    width: '100%',
   },
   primaryBtn: {
-    flex: 1,
+    width: '100%',
     backgroundColor: '#6D4330',
     borderRadius: 12,
-    paddingVertical: 12,
+    paddingVertical: 13,
     alignItems: 'center',
+    justifyContent: 'center',
     shadowColor: '#6D4330',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.25,
     shadowRadius: 5,
+    cursor: 'pointer',
   },
   providerPrimaryBtn: {
     backgroundColor: '#5C3818',
@@ -406,21 +391,23 @@ const styles = StyleSheet.create({
     color: '#FFFDF9',
     fontSize: 13,
     fontWeight: '700',
+    letterSpacing: 0.2,
   },
   secondaryBtn: {
-    flex: 0,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    width: '100%',
+    paddingVertical: 10,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(74, 46, 24, 0.2)',
+    borderColor: 'rgba(109, 67, 48, 0.25)',
+    backgroundColor: 'rgba(255, 253, 249, 0.65)',
     alignItems: 'center',
     justifyContent: 'center',
+    cursor: 'pointer',
   },
   secondaryBtnText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#4A2E18',
+    color: '#5C3818',
   },
 
   // Footer
