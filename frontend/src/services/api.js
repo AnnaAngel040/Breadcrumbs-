@@ -161,7 +161,27 @@ export async function fetchUserThreads(userId) {
   return [];
 }
 
+export async function fetchUserOverview(userId) {
+  try {
+    const res = await fetch(`${BASE_URL}/users/${encodeURIComponent(userId)}/overview`, { signal: AbortSignal.timeout(2500) });
+    if (res.ok) return await res.json();
+  } catch (e) {
+    // fallback
+  }
+
+  return {
+    user_id: userId,
+    wellbeing_label: userId === 'demo_flagged' ? "We're concerned about you — please reach out for help" : (userId === 'demo_escalating' ? "You seem to be going through a lot right now" : "Things look steady today"),
+    active_area_count: 2,
+    primary_area: "Work/Career",
+    trend_summary: userId === 'demo_improving' ? "Things have been getting a little easier recently" : "Stress has been building over the past week",
+    show_crisis_resources: userId === 'demo_flagged',
+    entry_count_last_14_days: 5
+  };
+}
+
 export async function fetchUserReport(userId, period = "last 14 days") {
+
   try {
     const res = await fetch(`${BASE_URL}/users/${userId}/report?period=${encodeURIComponent(period)}`, { signal: AbortSignal.timeout(2500) });
     if (res.ok) return await res.json();
@@ -182,41 +202,92 @@ export async function fetchUserReport(userId, period = "last 14 days") {
   };
 }
 
-export async function fetchTherapists(userId, category = "Work/Career") {
+export async function fetchTherapists(userId, category = "Work/Career", options = {}) {
+  const { preferred_mode = "any", gender = "any", sliding_scale = null, insurance = "any", lat = null, lng = null, max_distance_km = 50 } = options;
+  const params = new URLSearchParams();
+  if (preferred_mode && preferred_mode !== 'any') params.append('preferred_mode', preferred_mode);
+  if (gender && gender !== 'any') params.append('gender', gender);
+  if (sliding_scale != null) params.append('sliding_scale', sliding_scale);
+  if (insurance && insurance !== 'any') params.append('insurance', insurance);
+  if (lat != null) params.append('lat', lat);
+  if (lng != null) params.append('lng', lng);
+  if (max_distance_km) params.append('max_distance_km', max_distance_km);
+
+  const queryString = params.toString() ? `?${params.toString()}` : '';
+  const url = `${BASE_URL}/users/${encodeURIComponent(userId)}/therapists/${encodeURIComponent(category)}${queryString}`;
+
+
   try {
-    const res = await fetch(`${BASE_URL}/users/${userId}/therapists/${encodeURIComponent(category)}`, { signal: AbortSignal.timeout(2500) });
+    const res = await fetch(url, { signal: AbortSignal.timeout(3000) });
     if (res.ok) return await res.json();
   } catch (e) {
-    // fallback
+    console.warn('Backend therapists endpoint unavailable, using simulated data:', e.message);
   }
 
   return [
     {
-      id: "th_01",
-      name: "Dr. Amara Chen",
+      id: "th_vance",
+      name: "Dr. Elena Vance, Psy.D",
+      title: "Licensed Clinical Psychologist (12 yrs exp)",
       specialty: category,
-      tier: "high",
+      tier: "intensive",
       modes: ["online", "offline"],
-      address: "450 Sutter St, San Francisco, CA 94108",
+      address: "450 Sutter St, Suite 820, San Francisco, CA 94108",
       city: "San Francisco",
       rating: 4.9,
-      distance_km: 1.2,
-      match_score: 1.85
+      review_count: "124 mindful reviews",
+      next_available: "Tomorrow at 2:00 PM",
+      price: "$140 / session (In-network)",
+      gender: "female",
+      insurances: ["BlueCross", "Aetna", "Out-of-network"],
+      sliding_scale: true,
+      match_percentage: 98,
+      avatar_url: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?w=160&auto=format&fit=crop&q=80",
+      bio: "Specializes in workplace burnout, somatic grounding, CBT boundary restructuring, and chronic fatigue restoration."
     },
     {
-      id: "th_02",
-      name: "Marcus Vance, LMFT",
+      id: "th_thorne",
+      name: "Marcus Thorne, LMFT",
+      title: "Mindfulness & High-Stress Dynamics (8 yrs exp)",
+      specialty: category,
+      tier: "standard",
+      modes: ["online", "offline"],
+      address: "120 Montgomery St, San Francisco, CA 94104",
+      city: "San Francisco",
+      rating: 4.8,
+      review_count: "89 reviews",
+      next_available: "Thursday at 10:30 AM",
+      price: "$125 / session",
+      gender: "male",
+      insurances: ["BlueCross", "Out-of-network"],
+      sliding_scale: true,
+      match_percentage: 95,
+      avatar_url: "https://images.unsplash.com/photo-1560250097-0b93528c311a?w=160&auto=format&fit=crop&q=80",
+      bio: "Focuses on high-stakes career dynamics, mindfulness, and cognitive boundary restructuring."
+    },
+    {
+      id: "th_lin",
+      name: "Sophia Lin, LCSW",
+      title: "Holistic Stress & Somatic Therapist (10 yrs exp)",
       specialty: category,
       tier: "standard",
       modes: ["online"],
-      address: "Telehealth Practice",
-      city: "Virtual",
-      rating: 4.8,
-      distance_km: null,
-      match_score: 1.72
+      address: "Telehealth / Remote Consultation",
+      city: "Online",
+      rating: 5.0,
+      review_count: "96 reviews",
+      next_available: "Friday at 4:00 PM",
+      price: "$130 / session",
+      gender: "female",
+      insurances: ["Aetna", "Out-of-network"],
+      sliding_scale: true,
+      match_percentage: 92,
+      avatar_url: "https://images.unsplash.com/photo-1580489944761-15a19d654956?w=160&auto=format&fit=crop&q=80",
+      bio: "Holistic somatic therapist certified in nervous system restoration and tension de-escalation."
     }
   ];
 }
+
 
 export async function deleteUserData(userId) {
   try {

@@ -200,8 +200,8 @@ def test_matching_prefers_and_filters_by_offline_mode():
 
 
 def test_matching_with_coordinates_and_distance_cutoff():
-    # User in San Francisco downtown
-    user_lat, user_lng = 37.789, -122.408
+    # User in Bengaluru MG Road area
+    user_lat, user_lng = 12.9756, 77.6066
     matches = match_therapists(
         "Work/Career",
         "low",
@@ -342,6 +342,21 @@ def test_ollama_reason_graceful_fallback():
     assert res["category"] == "Work/Career"
     assert isinstance(res["reason"], str)
     assert len(res["reason"]) > 3
+
+
+def test_model2_categorization_and_fallback():
+    from app.categorize import predict_model2, categorize_with_reason, CANONICAL_CATEGORIES
+    # If .pkl files are present, returns dict with category & confidence; if absent, gracefully returns None
+    m2 = predict_model2("I can't afford rent this month, money is so tight")
+    if m2 is not None:
+        assert "category" in m2
+        assert "confidence" in m2
+        assert m2["category"] in CANONICAL_CATEGORIES
+
+    # categorize_with_reason always succeeds with a canonical category regardless of model presence
+    full_res = categorize_with_reason("I can't afford rent this month, money is so tight")
+    assert full_res["category"] in CANONICAL_CATEGORIES
+    assert isinstance(full_res["reason"], str)
 
 
 import pytest

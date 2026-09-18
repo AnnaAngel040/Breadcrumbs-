@@ -16,7 +16,9 @@ import CalendarModal from './components/CalendarModal';
 import ProfileModal from './components/ProfileModal';
 import WelcomePage from './components/WelcomePage';
 import TherapistPortalModal from './components/TherapistPortalModal';
-import StressInsightsPage from './components/StressInsightsPage';
+import FindCarePage from './components/FindCarePage';
+import AuthModal from './components/AuthModal';
+
 import {
   checkBackendStatus,
   submitTextEntry,
@@ -24,7 +26,7 @@ import {
 } from './services/api';
 
 // ─── Hero Screen (patient check-in view) ──────────────────────────────────────
-function HeroScreen({ account, onBack, onOpenInsights, onSwitchPersona }) {
+function HeroScreen({ account, onBack, onNavigateToFindCare, onSignOut, onSelectAccount }) {
   const userId = account?.user_id ?? 'demo_escalating';
   const [backendOnline, setBackendOnline] = useState(false);
 
@@ -39,6 +41,7 @@ function HeroScreen({ account, onBack, onOpenInsights, onSwitchPersona }) {
   const [textInput, setTextInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [lastResult, setLastResult] = useState(null);
+  const [hasConsent, setHasConsent] = useState(true);
 
   // Audio Recording Refs
   const mediaRecorderRef = useRef(null);
@@ -47,6 +50,10 @@ function HeroScreen({ account, onBack, onOpenInsights, onSwitchPersona }) {
 
   // Animation values
   const micScaleAnim = useRef(new Animated.Value(1)).current;
+  const pulseRing1 = useRef(new Animated.Value(1)).current;
+  const pulseRing2 = useRef(new Animated.Value(1)).current;
+  const pulseOpacity1 = useRef(new Animated.Value(0.6)).current;
+  const pulseOpacity2 = useRef(new Animated.Value(0.4)).current;
   const resultFadeAnim = useRef(new Animated.Value(0)).current;
 
   // Backend health check
@@ -58,44 +65,112 @@ function HeroScreen({ account, onBack, onOpenInsights, onSwitchPersona }) {
     return () => clearInterval(interval);
   }, []);
 
-  // Timer for audio recording + mic pulse animation
+  // Timer for audio recording + wave visualizer animation
   useEffect(() => {
     if (isRecording) {
       setRecordingSeconds(0);
       timerIntervalRef.current = setInterval(() => {
         setRecordingSeconds((sec) => sec + 1);
       }, 1000);
+
+      // Mic pulse
       Animated.loop(
         Animated.sequence([
-          Animated.timing(micScaleAnim, { toValue: 1.08, duration: 400, useNativeDriver: true }),
-          Animated.timing(micScaleAnim, { toValue: 1.0, duration: 400, useNativeDriver: true }),
+          Animated.timing(micScaleAnim, { toValue: 1.06, duration: 450, useNativeDriver: true }),
+          Animated.timing(micScaleAnim, { toValue: 1.0, duration: 450, useNativeDriver: true }),
+        ])
+      ).start();
+
+      // Expanding audio wave rings
+      Animated.loop(
+        Animated.parallel([
+          Animated.sequence([
+            Animated.timing(pulseRing1, { toValue: 1.5, duration: 900, useNativeDriver: true }),
+            Animated.timing(pulseRing1, { toValue: 1.0, duration: 0, useNativeDriver: true }),
+          ]),
+          Animated.sequence([
+            Animated.timing(pulseOpacity1, { toValue: 0, duration: 900, useNativeDriver: true }),
+            Animated.timing(pulseOpacity1, { toValue: 0.6, duration: 0, useNativeDriver: true }),
+          ]),
+          Animated.sequence([
+            Animated.timing(pulseRing2, { toValue: 1.8, duration: 1200, useNativeDriver: true }),
+            Animated.timing(pulseRing2, { toValue: 1.0, duration: 0, useNativeDriver: true }),
+          ]),
+          Animated.sequence([
+            Animated.timing(pulseOpacity2, { toValue: 0, duration: 1200, useNativeDriver: true }),
+            Animated.timing(pulseOpacity2, { toValue: 0.4, duration: 0, useNativeDriver: true }),
+          ]),
         ])
       ).start();
     } else {
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
       micScaleAnim.setValue(1);
+      pulseRing1.setValue(1);
+      pulseRing2.setValue(1);
+      pulseOpacity1.setValue(0);
+      pulseOpacity2.setValue(0);
     }
     return () => {
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
     };
   }, [isRecording]);
 
+  const speechRecognitionRef = useRef(null);
+  const recognizedTextRef = useRef('');
+
   const toggleRecording = async () => {
     if (isRecording) {
       setIsRecording(false);
       setIsSubmitting(true);
+      if (speechRecognitionRef.current) {
+        try {
+          speechRecognitionRef.current.stop();
+        } catch {}
+      }
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
         mediaRecorderRef.current.stop();
       } else {
         setTimeout(async () => {
-          const res = await submitAudioEntry(userId, new Blob());
+          const spoken = recognizedTextRef.current.trim();
+          let res;
+          if (spoken) {
+            res = await submitTextEntry(userId, spoken);
+          } else {
+            res = await submitAudioEntry(userId, new Blob());
+          }
           handleEntrySuccess(res);
-        }, 1200);
+        }, 1000);
       }
     } else {
       setLastResult(null);
       resultFadeAnim.setValue(0);
-      if (navigator && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+      recognizedTextRef.current = '';
+
+      // Initialize Web Speech Recognition for live audio-to-text
+      if (typeof window !== 'undefined' && (window.SpeechRecognition || window.webkitSpeechRecognition)) {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        try {
+          const recognition = new SpeechRecognition();
+          recognition.continuous = true;
+          recognition.interimResults = false;
+          recognition.onresult = (event) => {
+            let fullText = '';
+            for (let i = 0; i < event.results.length; i++) {
+              fullText += event.results[i][0].transcript + ' ';
+            }
+            recognizedTextRef.current = fullText.trim();
+          };
+          recognition.onerror = (err) => {
+            console.warn('Speech recognition warning:', err);
+          };
+          recognition.start();
+          speechRecognitionRef.current = recognition;
+        } catch (e) {
+          console.warn('Speech recognition start failed:', e);
+        }
+      }
+
+      if (typeof navigator !== 'undefined' && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
         try {
           const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
           const recorder = new MediaRecorder(stream);
@@ -105,15 +180,21 @@ function HeroScreen({ account, onBack, onOpenInsights, onSwitchPersona }) {
             if (event.data.size > 0) audioChunksRef.current.push(event.data);
           };
           recorder.onstop = async () => {
-            const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
             stream.getTracks().forEach((track) => track.stop());
-            const res = await submitAudioEntry(userId, audioBlob);
+            const spoken = recognizedTextRef.current.trim();
+            let res;
+            if (spoken) {
+              res = await submitTextEntry(userId, spoken);
+            } else {
+              const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+              res = await submitAudioEntry(userId, audioBlob);
+            }
             handleEntrySuccess(res);
           };
           recorder.start();
           setIsRecording(true);
         } catch (err) {
-          console.warn('Microphone access not available, running demo mode:', err.message);
+          console.warn('Microphone access not available, running simulated check-in:', err.message);
           setIsRecording(true);
         }
       } else {
@@ -207,20 +288,46 @@ function HeroScreen({ account, onBack, onOpenInsights, onSwitchPersona }) {
           </View>
         )}
 
-        <Animated.View style={{ transform: [{ scale: micScaleAnim }] }}>
-          <TouchableOpacity
-            style={[styles.micPillWrapper, isRecording && styles.micPillActive]}
-            onPress={toggleRecording}
-            activeOpacity={0.85}
-            accessibilityLabel={isRecording ? 'Stop Recording' : 'Start Voice Check-in'}
-          >
-            <Image
-              source={{ uri: '/mic-pill.png' }}
-              style={styles.micPillImage}
-              resizeMode="contain"
-            />
-          </TouchableOpacity>
-        </Animated.View>
+        {/* Animated Microphone with Audio Waveform Pulsing Rings */}
+        <View style={styles.micAnchorContainer}>
+          {isRecording && (
+            <>
+              <Animated.View
+                style={[
+                  styles.pulseRing,
+                  {
+                    transform: [{ scale: pulseRing1 }],
+                    opacity: pulseOpacity1,
+                  },
+                ]}
+              />
+              <Animated.View
+                style={[
+                  styles.pulseRing,
+                  {
+                    transform: [{ scale: pulseRing2 }],
+                    opacity: pulseOpacity2,
+                  },
+                ]}
+              />
+            </>
+          )}
+
+          <Animated.View style={{ transform: [{ scale: micScaleAnim }], zIndex: 10 }}>
+            <TouchableOpacity
+              style={[styles.micPillWrapper, isRecording && styles.micPillActive]}
+              onPress={toggleRecording}
+              activeOpacity={0.85}
+              accessibilityLabel={isRecording ? 'Stop Recording' : 'Start Voice Check-in'}
+            >
+              <Image
+                source={{ uri: '/mic-pill.png' }}
+                style={styles.micPillImage}
+                resizeMode="contain"
+              />
+            </TouchableOpacity>
+          </Animated.View>
+        </View>
 
         <TouchableOpacity
           style={styles.typeToggleBtn}
@@ -228,6 +335,18 @@ function HeroScreen({ account, onBack, onOpenInsights, onSwitchPersona }) {
         >
           <Text style={styles.typeToggleText}>
             {showTextInput ? '▲ Close text input' : '✍️ Or write a reflection'}
+          </Text>
+        </TouchableOpacity>
+
+        {/* 1-Click Interactive Consent & Privacy Notice */}
+        <TouchableOpacity
+          style={styles.consentRow}
+          onPress={() => setHasConsent(!hasConsent)}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.consentCheckbox}>{hasConsent ? '☑️' : '◻️'}</Text>
+          <Text style={styles.consentText}>
+            <Text style={styles.consentBold}>Private &amp; on-device:</Text> Raw audio is transcribed in-memory &amp; deleted immediately.
           </Text>
         </TouchableOpacity>
 
@@ -251,15 +370,23 @@ function HeroScreen({ account, onBack, onOpenInsights, onSwitchPersona }) {
           </View>
         )}
 
+        {/* Patient-Safe Reflection Card (Zero Clinical Scores) */}
         {lastResult && (
           <Animated.View style={[styles.resultCard, { opacity: resultFadeAnim }]}>
             <View style={styles.resultHeader}>
-              <Text style={styles.resultCheck}>✓ Check-in Logged to Sanctuary</Text>
-              <Text style={styles.resultCategory}>🌱 {lastResult.category}</Text>
+              <Text style={styles.resultCheck}>✓ Check-in Logged</Text>
+              <Text style={styles.resultCategory}>📂 {lastResult.category}</Text>
             </View>
-            <Text style={styles.gentleAffirmation}>
-              "Your reflection has been safely stored. Take a deep breath—you are taking mindful steps forward."
+            <Text style={styles.resultMessageText}>
+              Thank you for sharing. Your reflection has been saved — small steps like this matter. 🌱
             </Text>
+            <TouchableOpacity
+              style={styles.findCareActionBtn}
+              onPress={onNavigateToFindCare}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.findCareActionBtnText}>🌿 Explore Matched Care Practitioners →</Text>
+            </TouchableOpacity>
           </Animated.View>
         )}
       </View>
@@ -274,13 +401,14 @@ function HeroScreen({ account, onBack, onOpenInsights, onSwitchPersona }) {
         visible={profileVisible}
         onClose={() => setProfileVisible(false)}
         userId={userId}
-        account={account}
-        onSignOut={onBack}
-        backendOnline={backendOnline}
-        onSwitchPersona={(p) => {
-          if (onSwitchPersona) onSwitchPersona(p);
-          setProfileVisible(false);
+        onSelectUser={(uid) => {
+          if (onSelectAccount) {
+            onSelectAccount({ user_id: uid, display_name: uid, role: 'patient' });
+          }
         }}
+        onOpenReport={() => {}}
+        onSignOut={onSignOut}
+        backendOnline={backendOnline}
       />
 
       {/* Back to Welcome */}
@@ -291,24 +419,68 @@ function HeroScreen({ account, onBack, onOpenInsights, onSwitchPersona }) {
   );
 }
 
-// ─── Root Router ──────────────────────────────────────────────────────────────
+// ─── Root Router with LocalStorage Session Persistence ────────────────────────
 export default function App() {
   const [screen, setScreen] = useState('welcome');
   const [activeAccount, setActiveAccount] = useState(null);
+  const [authModalVisible, setAuthModalVisible] = useState(false);
+
+  // Restore session from localStorage on initial boot
+  useEffect(() => {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const savedAccount = window.localStorage.getItem('breadcrumbs_active_account');
+        if (savedAccount) {
+          const parsed = JSON.parse(savedAccount);
+          setActiveAccount(parsed);
+          if (parsed.role === 'therapist') {
+            setScreen('therapist');
+          } else {
+            setScreen('hero');
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Could not restore session from storage:', e);
+    }
+  }, []);
 
   const handleEnterAsPatient = (account) => {
     setActiveAccount(account);
     setScreen('hero');
+    saveSession(account);
   };
 
   const handleEnterAsTherapist = (account) => {
     setActiveAccount(account);
     setScreen('therapist');
+    saveSession(account);
   };
 
   const handleSelectPatient = (patient) => {
     setActiveAccount(patient);
     setScreen('hero');
+    saveSession(patient);
+  };
+
+  const handleSignOut = () => {
+    setActiveAccount(null);
+    setScreen('welcome');
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.removeItem('breadcrumbs_active_account');
+      }
+    } catch {}
+  };
+
+  const saveSession = (acc) => {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage && acc) {
+        window.localStorage.setItem('breadcrumbs_active_account', JSON.stringify(acc));
+      }
+    } catch (e) {
+      console.warn('Could not persist session:', e);
+    }
   };
 
   if (screen === 'welcome') {
@@ -316,17 +488,7 @@ export default function App() {
       <WelcomePage
         onEnterAsPatient={handleEnterAsPatient}
         onEnterAsTherapist={handleEnterAsTherapist}
-        onOpenInsights={() => setScreen('insights')}
-      />
-    );
-  }
-
-  if (screen === 'insights') {
-    return (
-      <StressInsightsPage
-        account={activeAccount}
-        onBack={() => setScreen(activeAccount ? 'hero' : 'welcome')}
-        onNavigateToCheckIn={() => setScreen('hero')}
+        onNavigateToFindCare={() => setScreen('findCare')}
       />
     );
   }
@@ -335,7 +497,7 @@ export default function App() {
     return (
       <TherapistPortalModal
         visible={true}
-        onClose={() => setScreen('welcome')}
+        onClose={handleSignOut}
         therapistId={activeAccount?.user_id || 'demo_therapist'}
         therapistAccount={activeAccount}
         onSelectPatient={handleSelectPatient}
@@ -343,12 +505,36 @@ export default function App() {
     );
   }
 
+  if (screen === 'findCare') {
+    return (
+      <>
+        <FindCarePage
+          account={activeAccount}
+          onNavigateToCheckIn={() => setScreen('hero')}
+          onOpenAuth={() => setAuthModalVisible(true)}
+          onSignOut={handleSignOut}
+        />
+        <AuthModal
+          visible={authModalVisible}
+          onClose={() => setAuthModalVisible(false)}
+          onSuccess={(account) => {
+            setActiveAccount(account);
+            saveSession(account);
+            setAuthModalVisible(false);
+          }}
+          initialRole="patient"
+        />
+      </>
+    );
+  }
+
   return (
     <HeroScreen
       account={activeAccount}
-      onBack={() => setScreen('welcome')}
-      onOpenInsights={() => setScreen('insights')}
-      onSwitchPersona={(p) => setActiveAccount(p)}
+      onBack={handleSignOut}
+      onNavigateToFindCare={() => setScreen('findCare')}
+      onSignOut={handleSignOut}
+      onSelectAccount={handleSelectPatient}
     />
   );
 }
@@ -394,7 +580,7 @@ const styles = StyleSheet.create({
     fontSize: 28,
     fontWeight: '700',
     color: '#4A2E18',
-    fontFamily: 'Fraunces',
+    fontFamily: 'Fraunces, Georgia, serif',
     letterSpacing: -0.3,
     textAlign: 'center',
   },
@@ -419,16 +605,16 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.04,
     shadowRadius: 16,
-    marginBottom: 28,
+    marginBottom: 24,
   },
   promptText: {
     fontSize: 24,
     fontStyle: 'italic',
     color: '#4A2E18',
-    fontFamily: 'Fraunces',
+    fontFamily: 'Fraunces, Georgia, serif',
     fontWeight: '500',
     textAlign: 'center',
-    marginBottom: 18,
+    marginBottom: 16,
     letterSpacing: -0.2,
   },
   recordingPill: {
@@ -465,6 +651,24 @@ const styles = StyleSheet.create({
     color: '#6B4423',
     fontStyle: 'italic',
   },
+
+  // Mic Pulse Visualizer
+  micAnchorContainer: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 180,
+    height: 60,
+  },
+  pulseRing: {
+    position: 'absolute',
+    width: 172,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: 'rgba(220, 38, 38, 0.25)',
+    borderWidth: 1.5,
+    borderColor: '#DC2626',
+  },
   micPillWrapper: {
     width: 172,
     height: 48,
@@ -475,13 +679,14 @@ const styles = StyleSheet.create({
   micPillActive: {
     shadowColor: '#DC2626',
     shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
+    shadowOpacity: 0.5,
+    shadowRadius: 14,
   },
   micPillImage: {
     width: 172,
     height: 48,
   },
+
   typeToggleBtn: {
     marginTop: 14,
     paddingVertical: 6,
@@ -492,6 +697,29 @@ const styles = StyleSheet.create({
     color: '#7C522D',
     fontWeight: '600',
   },
+
+  // Consent Row
+  consentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+    marginBottom: 6,
+    paddingHorizontal: 10,
+  },
+  consentCheckbox: {
+    fontSize: 12,
+  },
+  consentText: {
+    fontSize: 11,
+    color: '#7D5838',
+    lineHeight: 15,
+  },
+  consentBold: {
+    fontWeight: '700',
+    color: '#4A2E18',
+  },
+
   textInputContainer: {
     width: '100%',
     backgroundColor: '#FFFDF7',
@@ -527,11 +755,12 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     fontSize: 13,
   },
+
   resultCard: {
     width: '100%',
     backgroundColor: '#FFFDF7',
     borderRadius: 16,
-    padding: 14,
+    padding: 16,
     marginTop: 16,
     borderWidth: 1,
     borderColor: 'rgba(74, 46, 24, 0.1)',
@@ -539,12 +768,12 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
+    gap: 8,
   },
   resultHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 6,
   },
   resultCheck: {
     fontSize: 13,
@@ -556,6 +785,25 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#6B4423',
   },
+  resultMessageText: {
+    fontSize: 13,
+    color: '#6B4423',
+    lineHeight: 18,
+  },
+  findCareActionBtn: {
+    backgroundColor: '#FAF1E6',
+    borderRadius: 10,
+    paddingVertical: 8,
+    alignItems: 'center',
+    marginTop: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(92, 58, 33, 0.12)',
+  },
+  findCareActionBtnText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#5C3818',
+  },
   gentleAffirmation: {
     fontSize: 12,
     color: '#7C522D',
@@ -563,6 +811,7 @@ const styles = StyleSheet.create({
     lineHeight: 18,
     marginTop: 4,
   },
+
   signOutBtn: {
     position: 'absolute',
     bottom: 14,

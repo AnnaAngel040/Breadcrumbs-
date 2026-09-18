@@ -16,8 +16,10 @@ from typing import Optional
 
 _THERAPISTS_PATH = os.path.join(os.path.dirname(__file__), "therapists.json")
 
-with open(_THERAPISTS_PATH, "r", encoding="utf-8") as f:
-    THERAPISTS: list[dict] = json.load(f)
+
+def get_all_therapists() -> list[dict]:
+    with open(_THERAPISTS_PATH, "r", encoding="utf-8") as f:
+        return json.load(f)
 
 
 def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
@@ -41,23 +43,30 @@ def match_therapists(
     top_category: str,
     severity: str,
     preferred_mode: str = "any",
+    gender: Optional[str] = None,
+    sliding_scale: Optional[bool] = None,
+    insurance: Optional[str] = None,
     user_lat: Optional[float] = None,
     user_lng: Optional[float] = None,
     max_distance_km: float = 50.0,
     limit: int = 3,
 ) -> list[dict]:
-    """Returns up to `limit` therapists matching the category, filtered and
-    ranked by severity tier, preferred consultation mode (online/offline/any),
-    and geographical distance.
+    """Returns therapists matching the category, filtered and
+    ranked by severity tier, consultation mode, gender preference, sliding scale,
+    insurance provider, and geographical distance.
     """
     base_category = top_category.split("#")[0]
     preferred_mode = (preferred_mode or "any").lower().strip()
+    gender = (gender or "any").lower().strip()
+    insurance = (insurance or "any").lower().strip()
 
-    candidates = [t for t in THERAPISTS if t.get("specialty") == base_category]
+    candidates = [t for t in get_all_therapists() if t.get("specialty") == base_category]
 
     # Tier filtering: For high/flagged severity, prioritize/require standard or intensive
     if severity in ("high", "flagged"):
-        candidates = [t for t in candidates if t.get("tier") in ("standard", "intensive")]
+        tier_candidates = [t for t in candidates if t.get("tier") in ("standard", "intensive")]
+        if tier_candidates:
+            candidates = tier_candidates
 
     scored_matches = []
     for t in candidates:
@@ -68,6 +77,21 @@ def match_therapists(
             continue
         if preferred_mode == "offline" and "offline" not in modes:
             continue
+
+        # Gender preference check
+        if gender != "any" and t.get("gender"):
+            if t["gender"].lower() != gender:
+                continue
+
+        # Sliding scale priority check
+        if sliding_scale is True and not t.get("sliding_scale", False):
+            continue
+
+        # Insurance check
+        if insurance != "any" and insurance:
+            insurances_lower = [ins.lower() for ins in t.get("insurances", [])]
+            if not any(insurance in ins for ins in insurances_lower):
+                continue
 
         # Distance calculation
         dist = None
@@ -95,6 +119,10 @@ def match_therapists(
         if preferred_mode in modes:
             score += 0.20
 
+        # Insurance match bonus
+        if insurance != "any" and insurance:
+            score += 0.25
+
         # Distance score
         if dist is not None:
             proximity_score = max(0.0, 1.0 - (dist / max_distance_km))
@@ -109,6 +137,8 @@ def match_therapists(
         res = dict(t)
         res["distance_km"] = dist
         res["match_score"] = round(score, 3)
+        if not res.get("match_percentage"):
+            res["match_percentage"] = int(min(99, max(85, round((score / 2.0) * 100))))
         scored_matches.append(res)
 
     # Sort descending by match_score

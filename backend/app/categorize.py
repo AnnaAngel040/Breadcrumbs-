@@ -17,13 +17,15 @@ taxonomy — therapists.json and match_therapists() stay in sync with
 this list.
 """
 
+import json
 import logging
 import os
 import re
 import socket
 import time
 from typing import Optional
-import requests
+import urllib.request
+import urllib.error
 
 logger = logging.getLogger(__name__)
 
@@ -128,41 +130,127 @@ def extract_reason_ollama(transcript: str, category: str) -> Optional[str]:
     )
 
     try:
-        response = requests.post(
+        req_data = json.dumps({
+            "model": OLLAMA_MODEL,
+            "prompt": prompt,
+            "stream": False,
+            "options": {"temperature": 0.3, "num_predict": 40},
+        }).encode("utf-8")
+        req = urllib.request.Request(
             f"{OLLAMA_BASE_URL}/api/generate",
-            json={
-                "model": OLLAMA_MODEL,
-                "prompt": prompt,
-                "stream": False,
-                "options": {"temperature": 0.3, "num_predict": 40},
-            },
-            timeout=OLLAMA_TIMEOUT,
+            data=req_data,
+            headers={"Content-Type": "application/json"},
+            method="POST",
         )
-        if response.status_code == 200:
-            result = response.json()
-            raw_text = result.get("response", "").strip()
-            # Clean up leading 'Cause:' / 'Reason:' or quotes
-            cleaned = re.sub(r"^(cause|reason):\s*", "", raw_text, flags=re.IGNORECASE).strip(' "\'')
-            return cleaned if cleaned else None
-    except (requests.exceptions.RequestException, requests.exceptions.Timeout) as e:
+        with urllib.request.urlopen(req, timeout=OLLAMA_TIMEOUT) as resp:
+            if resp.status == 200:
+                result = json.loads(resp.read().decode("utf-8"))
+                raw_text = result.get("response", "").strip()
+                cleaned = re.sub(r"^(cause|reason):\s*", "", raw_text, flags=re.IGNORECASE).strip(' "\'')
+                return cleaned if cleaned else None
+    except Exception as e:
         logger.debug("Ollama reason extraction unavailable (%s)", e)
         return None
     return None
+
+
+# --- Model 2 (TF-IDF + Logistic Regression) Primary Categorizer --------------
+_model2_vectorizer = None
+_model2_classifier = None
+_model2_load_attempted = False
+
+MODEL2_SEARCH_PATHS = [
+    os.path.join(os.path.dirname(__file__), "models"),
+    os.path.dirname(__file__),
+    os.path.abspath(os.path.join(os.path.dirname(__file__), "..")),
+    os.getcwd(),
+]
+
+
+def _get_model2():
+    """Lazily loads Model 2 (TF-IDF Vectorizer + Logistic Regression Classifier)
+    from disk if the .pkl files are present.
+    """
+    global _model2_vectorizer, _model2_classifier, _model2_load_attempted
+    if _model2_load_attempted:
+        return _model2_vectorizer, _model2_classifier
+
+    _model2_load_attempted = True
+    import pickle
+    import warnings
+
+    for base_dir in MODEL2_SEARCH_PATHS:
+        vec_path = os.path.join(base_dir, "model2_vectorizer.pkl")
+        clf_path = os.path.join(base_dir, "model2_classifier.pkl")
+        # Also check common typo variant
+        if not os.path.exists(clf_path):
+            clf_path = os.path.join(base_dir, "model2_classifer.pkl")
+
+        if os.path.exists(vec_path) and os.path.exists(clf_path):
+            try:
+                logger.info("Loading Model 2 (TF-IDF Vectorizer & Classifier) from %s...", base_dir)
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore")
+                    with open(vec_path, "rb") as f:
+                        _model2_vectorizer = pickle.load(f)
+                    with open(clf_path, "rb") as f:
+                        _model2_classifier = pickle.load(f)
+                logger.info("Model 2 loaded successfully.")
+                return _model2_vectorizer, _model2_classifier
+            except Exception as e:
+                logger.warning("Failed to load Model 2 from %s: %s", base_dir, e)
+
+    return None, None
+
+
+def predict_model2(transcript: str) -> Optional[dict]:
+    """Runs inference on Model 2 if available.
+    Returns {'category': str, 'confidence': float} or None if model files are not present.
+    """
+    vec, clf = _get_model2()
+    if vec is None or clf is None:
+        return None
+
+    try:
+        text_tfidf = vec.transform([transcript])
+        category = clf.predict(text_tfidf)[0]
+        probabilities = clf.predict_proba(text_tfidf)[0]
+        confidence = float(max(probabilities))
+
+        # If model predicted 'Other' or non-canonical category, fall back to keyword classification
+        if category not in CANONICAL_CATEGORIES or category == "Other":
+            kw = _categorize_keyword(transcript)
+            return {"category": kw["category"], "confidence": confidence, "model2_raw_category": category}
+
+        return {"category": category, "confidence": confidence}
+    except Exception as e:
+        logger.warning("Model 2 prediction failed: %s", e)
+        return None
 
 
 # --- public entry points ---------------------------------------------------
 
 def categorize_with_reason(transcript: str) -> dict:
     """Returns dict {'category': str, 'reason': str}.
-    Uses local keyword taxonomy for category matching, and enhances trigger reasoning
-    via local Ollama (Llama 3.2 1B) if Ollama is running.
-    Falls back gracefully to keyword trigger if Ollama is not running or times out.
+    1. Primary: Runs Model 2 (TF-IDF + Logistic Regression).
+    2. Fallback: If Model 2 is not yet installed or returns 'Other', uses local keyword matching.
+    3. Reason Extraction: Uses local Ollama (Llama 3.2 1B) if running, else keyword-derived trigger.
     """
+    category = None
+    reason = None
+
+    # 1. Try Model 2 as primary source
+    m2_result = predict_model2(transcript)
+    if m2_result:
+        category = m2_result["category"]
+
+    # 2. Fallback to keyword matching if Model 2 is unavailable
     kw_result = _categorize_keyword(transcript)
-    category = kw_result["category"]
+    if not category:
+        category = kw_result["category"]
     reason = kw_result["reason"]
 
-    # Try local Ollama reason extraction if available
+    # 3. Enhance trigger reasoning via local Ollama if running
     ollama_reason = extract_reason_ollama(transcript, category)
     if ollama_reason:
         reason = ollama_reason
