@@ -15,6 +15,7 @@ import {
 import {
   fetchTherapists,
   fetchUserOverview,
+  linkTherapistPatient,
 } from '../services/api';
 import CalendarModal from './CalendarModal';
 import ProfileModal from './ProfileModal';
@@ -128,6 +129,21 @@ export default function FindCarePage({
     } catch {}
     return new Set();
   });
+  const [linkedTherapists, setLinkedTherapists] = useState(() => {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const raw = window.localStorage.getItem('breadcrumbs_therapist_patient_links');
+        if (raw) {
+          const links = JSON.parse(raw);
+          return new Set(
+            Object.keys(links).filter((therapistId) => (links[therapistId] || []).includes(userId))
+          );
+        }
+      }
+    } catch {}
+    return new Set();
+  });
+  const [linkFeedback, setLinkFeedback] = useState('');
 
   // Modals
   const [selectedTherapistForProfile, setSelectedTherapistForProfile] = useState(null);
@@ -177,6 +193,19 @@ export default function FindCarePage({
     setUpdateFeedback(true);
     loadData();
     setTimeout(() => setUpdateFeedback(false), 2000);
+  };
+
+  const handleLinkTherapist = async (therapist) => {
+    try {
+      await linkTherapistPatient(therapist.id, userId);
+      setLinkedTherapists((prev) => new Set(prev).add(therapist.id));
+      setLinkFeedback(`Linked to ${therapist.name}. The therapist can now view your stress report.`);
+      setTimeout(() => setLinkFeedback(''), 3500);
+    } catch (e) {
+      console.warn('Could not link therapist:', e);
+      setLinkFeedback('Could not link this therapist right now. Please try again.');
+      setTimeout(() => setLinkFeedback(''), 3500);
+    }
   };
 
   const toggleBookmark = (id) => {
@@ -459,6 +488,17 @@ export default function FindCarePage({
                         activeOpacity={0.85}
                       >
                         <Text style={styles.callPracticeBtnText}>📞 Contact Practice</Text>
+                      </TouchableOpacity>
+
+                      <TouchableOpacity
+                        style={linkedTherapists.has(therapist.id) ? styles.linkedBtn : styles.linkTherapistBtn}
+                        onPress={() => handleLinkTherapist(therapist)}
+                        disabled={linkedTherapists.has(therapist.id)}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={linkedTherapists.has(therapist.id) ? styles.linkedBtnText : styles.linkTherapistBtnText}>
+                          {linkedTherapists.has(therapist.id) ? 'Linked ✓' : 'Link to Therapist'}
+                        </Text>
                       </TouchableOpacity>
 
                       <TouchableOpacity

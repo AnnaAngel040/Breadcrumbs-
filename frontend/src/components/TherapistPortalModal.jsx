@@ -7,8 +7,9 @@ import {
   ScrollView,
   SafeAreaView,
   ActivityIndicator,
+  TextInput,
 } from 'react-native';
-import { getTherapistPatients } from '../services/api';
+import { getTherapistPatients, linkTherapistPatient } from '../services/api';
 import ReportModal from './ReportModal';
 
 export default function TherapistPortalModal({
@@ -20,14 +21,50 @@ export default function TherapistPortalModal({
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedReportPatientId, setSelectedReportPatientId] = useState(null);
+  const [linkPatientId, setLinkPatientId] = useState('');
+  const [linkLoading, setLinkLoading] = useState(false);
+  const [linkFeedback, setLinkFeedback] = useState({ type: '', message: '' });
 
-  useEffect(() => {
+  const refreshPatients = () => {
     setLoading(true);
     getTherapistPatients(therapistId).then((data) => {
       setPatients(data);
       setLoading(false);
     });
+  };
+
+  useEffect(() => {
+    refreshPatients();
   }, [therapistId]);
+
+  const handleLinkPatient = async () => {
+    const pid = linkPatientId.trim();
+    if (!pid) {
+      setLinkFeedback({ type: 'error', message: 'Please enter a Patient ID.' });
+      return;
+    }
+
+    // Check if already linked
+    if (patients.some((p) => p.patient_id === pid)) {
+      setLinkFeedback({ type: 'error', message: `"${pid}" is already linked to your caseload.` });
+      return;
+    }
+
+    setLinkLoading(true);
+    setLinkFeedback({ type: '', message: '' });
+
+    try {
+      await linkTherapistPatient(therapistId, pid);
+      setLinkPatientId('');
+      setLinkFeedback({ type: 'success', message: `✓ Patient "${pid}" linked successfully.` });
+      refreshPatients();
+      setTimeout(() => setLinkFeedback({ type: '', message: '' }), 4000);
+    } catch (err) {
+      setLinkFeedback({ type: 'error', message: err.message || 'Failed to link patient.' });
+    } finally {
+      setLinkLoading(false);
+    }
+  };
 
   const getSeverityBadge = (sev) => {
     if (sev === 'flagged') return { bg: '#FEE2E2', color: '#B91C1C', text: 'ACUTE / FLAGGED' };
@@ -56,6 +93,57 @@ export default function TherapistPortalModal({
 
       {/* Patient List */}
       <ScrollView contentContainerStyle={styles.content}>
+        {/* Link a New Patient */}
+        <View style={styles.linkCard}>
+          <Text style={styles.sectionTitle}>LINK A PATIENT</Text>
+          <Text style={styles.linkDescription}>
+            Enter a patient's ID to add them to your clinical caseload and access their stress reports.
+          </Text>
+          <View style={styles.linkInputRow}>
+            <TextInput
+              style={styles.linkInput}
+              placeholder="Enter Patient ID (e.g. maya_24)"
+              placeholderTextColor="#A47B55"
+              value={linkPatientId}
+              onChangeText={(text) => {
+                setLinkPatientId(text);
+                if (linkFeedback.message) setLinkFeedback({ type: '', message: '' });
+              }}
+              autoCapitalize="none"
+              editable={!linkLoading}
+              onSubmitEditing={handleLinkPatient}
+            />
+            <TouchableOpacity
+              style={[styles.linkBtn, linkLoading && styles.linkBtnDisabled]}
+              onPress={handleLinkPatient}
+              disabled={linkLoading}
+            >
+              {linkLoading ? (
+                <ActivityIndicator size="small" color="#FFFDF9" />
+              ) : (
+                <Text style={styles.linkBtnText}>+ Link</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+          {linkFeedback.message ? (
+            <View
+              style={[
+                styles.linkFeedback,
+                linkFeedback.type === 'error' ? styles.linkFeedbackError : styles.linkFeedbackSuccess,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.linkFeedbackText,
+                  { color: linkFeedback.type === 'error' ? '#991B1B' : '#15803D' },
+                ]}
+              >
+                {linkFeedback.type === 'error' ? '⚠️' : ''} {linkFeedback.message}
+              </Text>
+            </View>
+          ) : null}
+        </View>
+
         <Text style={styles.sectionTitle}>LINKED PATIENT TRIAGE</Text>
 
         {loading ? (
@@ -263,5 +351,77 @@ const styles = StyleSheet.create({
     color: '#FFFDF9',
     fontSize: 12,
     fontWeight: '700',
+  },
+  // ─── Link Patient Form ──────────────────────
+  linkCard: {
+    backgroundColor: '#FFFDF9',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(74, 46, 24, 0.08)',
+    shadowColor: '#4A2E18',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.04,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  linkDescription: {
+    fontSize: 12,
+    color: '#8D633D',
+    marginBottom: 12,
+    lineHeight: 17,
+  },
+  linkInputRow: {
+    flexDirection: 'row',
+    gap: 8,
+    alignItems: 'center',
+  },
+  linkInput: {
+    flex: 1,
+    backgroundColor: '#FAF2E8',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: '#382211',
+    borderWidth: 1,
+    borderColor: 'rgba(74, 46, 24, 0.12)',
+  },
+  linkBtn: {
+    backgroundColor: '#6D4330',
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 72,
+  },
+  linkBtnDisabled: {
+    opacity: 0.6,
+  },
+  linkBtnText: {
+    color: '#FFFDF9',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  linkFeedback: {
+    marginTop: 10,
+    borderRadius: 8,
+    padding: 10,
+  },
+  linkFeedbackError: {
+    backgroundColor: '#FEE2E2',
+    borderWidth: 1,
+    borderColor: '#EF4444',
+  },
+  linkFeedbackSuccess: {
+    backgroundColor: '#DCFCE7',
+    borderWidth: 1,
+    borderColor: '#16A34A',
+  },
+  linkFeedbackText: {
+    fontSize: 12,
+    fontWeight: '600',
   },
 });

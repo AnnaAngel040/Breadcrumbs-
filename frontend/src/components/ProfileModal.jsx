@@ -102,6 +102,20 @@ export default function ProfileModal({
                 </Text>
               </View>
             </View>
+
+            {/* Patient ID Sharing Card — only for patients */}
+            {role === 'patient' && (
+              <View style={styles.patientIdCard}>
+                <Text style={styles.patientIdCardIcon}>🔗</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.patientIdCardTitle}>Your Patient ID</Text>
+                  <Text style={styles.patientIdCardValue}>{userId}</Text>
+                  <Text style={styles.patientIdCardHint}>
+                    Share this ID with your therapist so they can link your account and view your stress reports.
+                  </Text>
+                </View>
+              </View>
+            )}
           </View>
 
           {/* Privacy & Right to Delete */}
@@ -485,5 +499,46 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '600',
     color: '#7C522D',
+  },
+  // ─── Patient ID Sharing Card ──────────────────
+  patientIdCard: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 10,
+    backgroundColor: '#EFF6FF',
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(59, 130, 246, 0.2)',
+  },
+  patientIdCardIcon: {
+    fontSize: 18,
+    marginTop: 2,
+  },
+  patientIdCardTitle: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#1E40AF',
+    letterSpacing: 0.4,
+    marginBottom: 2,
+  },
+  patientIdCardValue: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1E3A5F',
+    fontFamily: 'monospace',
+    backgroundColor: '#DBEAFE',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+    overflow: 'hidden',
+    alignSelf: 'flex-start',
+    marginVertical: 4,
+  },
+  patientIdCardHint: {
+    fontSize: 11,
+    color: '#3B82F6',
+    lineHeight: 15,
   },
 });
