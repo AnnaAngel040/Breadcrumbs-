@@ -71,20 +71,6 @@ export default function AuthModal({
     }
   };
 
-  const selectQuickPersona = async (id, personaRole = 'patient') => {
-    setLoading(true);
-    setError('');
-    try {
-      const account = await getAccount(id);
-      account.role = personaRole;
-      setLoading(false);
-      onAuthSuccess(account);
-    } catch (err) {
-      setLoading(false);
-      setError('Could not sign in with demo user.');
-    }
-  };
-
   return (
     <Modal visible={visible} animationType="slide" transparent={false} onRequestClose={onClose}>
       <SafeAreaView style={styles.safeArea}>
@@ -98,7 +84,7 @@ export default function AuthModal({
           <View style={{ width: 36 }} />
         </View>
 
-        <ScrollView contentContainerStyle={styles.content}>
+        <ScrollView style={{ flex: 1, backgroundColor: '#F6EAC9' }} contentContainerStyle={styles.content}>
           {/* Mode Switcher Tabs */}
           <View style={styles.tabContainer}>
             <TouchableOpacity
@@ -133,7 +119,7 @@ export default function AuthModal({
               onPress={() => setRole('patient')}
             >
               <Text style={[styles.roleOptionText, role === 'patient' && styles.roleOptionTextActive]}>
-                🤎 Member / Seeker
+                🤎 I am seeking support
               </Text>
             </TouchableOpacity>
 
@@ -142,7 +128,7 @@ export default function AuthModal({
               onPress={() => setRole('therapist')}
             >
               <Text style={[styles.roleOptionText, role === 'therapist' && styles.roleOptionTextActive]}>
-                🩺 Clinician / Provider
+                🩺 I am a licensed therapist
               </Text>
             </TouchableOpacity>
           </View>
@@ -207,56 +193,13 @@ export default function AuthModal({
                 {mode === 'signin'
                   ? role === 'patient'
                     ? 'Sign In & Enter Sanctuary →'
-                    : 'Sign In to Provider Portal 🪪'
+                    : 'Sign In to Provider Portal →'
                   : role === 'patient'
                   ? 'Join as Member & Enter Sanctuary →'
-                  : 'Register Clinical Provider Profile'}
+                  : 'Register Clinical Provider Profile →'}
               </Text>
             )}
           </TouchableOpacity>
-
-          {/* Quick Demo Sign-in Helper */}
-          <View style={styles.demoSection}>
-            <Text style={styles.demoSectionTitle}>OR INSTANT DEMO ACCESS</Text>
-            
-            {role === 'patient' ? (
-              <View style={styles.quickGrid}>
-                <TouchableOpacity
-                  style={styles.quickBtn}
-                  onPress={() => selectQuickPersona('demo_escalating', 'patient')}
-                >
-                  <Text style={styles.quickBtnTitle}>Alex (Escalating)</Text>
-                  <Text style={styles.quickBtnSub}>High Stress Curve</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={styles.quickBtn}
-                  onPress={() => selectQuickPersona('demo_improving', 'patient')}
-                >
-                  <Text style={styles.quickBtnTitle}>Jordan (Improving)</Text>
-                  <Text style={styles.quickBtnSub}>Recovery Curve</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity
-                  style={[styles.quickBtn, { borderColor: '#DC2626' }]}
-                  onPress={() => selectQuickPersona('demo_flagged', 'patient')}
-                >
-                  <Text style={[styles.quickBtnTitle, { color: '#B91C1C' }]}>Sam (Flagged)</Text>
-                  <Text style={styles.quickBtnSub}>Acute Crisis Alert</Text>
-                </TouchableOpacity>
-              </View>
-            ) : (
-              <View style={styles.quickGrid}>
-                <TouchableOpacity
-                  style={[styles.quickBtn, { flex: 1 }]}
-                  onPress={() => selectQuickPersona('th_chen', 'therapist')}
-                >
-                  <Text style={styles.quickBtnTitle}>Dr. Amara Chen</Text>
-                  <Text style={styles.quickBtnSub}>Licensed Clinical Psychologist</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-          </View>
         </ScrollView>
       </SafeAreaView>
     </Modal>
@@ -266,7 +209,9 @@ export default function AuthModal({
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#FDF7F0',
+    backgroundColor: '#F6EAC9',
+    width: '100%',
+    height: '100%',
   },
   header: {
     flexDirection: 'row',
@@ -274,14 +219,15 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 20,
     paddingVertical: 12,
+    backgroundColor: '#F6EAC9',
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(74, 46, 24, 0.1)',
+    borderBottomColor: 'rgba(74, 46, 24, 0.08)',
   },
   closeBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: '#EFE3D5',
+    backgroundColor: '#EAD7B5',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -299,14 +245,17 @@ const styles = StyleSheet.create({
   content: {
     paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: 24,
+    paddingBottom: 40,
+    minHeight: '100%',
+    flexGrow: 1,
+    backgroundColor: '#F6EAC9',
     maxWidth: 460,
     width: '100%',
     alignSelf: 'center',
   },
   tabContainer: {
     flexDirection: 'row',
-    backgroundColor: '#EFE3D5',
+    backgroundColor: '#EAD7B5',
     borderRadius: 12,
     padding: 4,
     marginBottom: 12,
@@ -318,7 +267,7 @@ const styles = StyleSheet.create({
     borderRadius: 9,
   },
   tabActive: {
-    backgroundColor: '#FFFDF9',
+    backgroundColor: '#FFFDF7',
     shadowColor: '#4A2E18',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.08,
@@ -347,11 +296,11 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: 'rgba(74, 46, 24, 0.12)',
     alignItems: 'center',
-    backgroundColor: '#FFFDF9',
+    backgroundColor: '#FFFDF7',
   },
   roleOptionActive: {
     borderColor: '#6D4330',
-    backgroundColor: '#F5EBE1',
+    backgroundColor: '#EFE0C2',
   },
   roleOptionText: {
     fontSize: 12,
@@ -386,7 +335,7 @@ const styles = StyleSheet.create({
     letterSpacing: 0.6,
   },
   input: {
-    backgroundColor: '#FFFDF9',
+    backgroundColor: '#FFFDF7',
     borderRadius: 12,
     paddingHorizontal: 14,
     paddingVertical: 12,
@@ -406,6 +355,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.2,
     shadowRadius: 6,
+    cursor: 'pointer',
   },
   submitBtnDisabled: {
     opacity: 0.6,
@@ -414,41 +364,5 @@ const styles = StyleSheet.create({
     color: '#FFFDF9',
     fontSize: 14,
     fontWeight: '700',
-  },
-  demoSection: {
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(74, 46, 24, 0.1)',
-    paddingTop: 16,
-  },
-  demoSectionTitle: {
-    fontSize: 11,
-    fontWeight: '800',
-    color: '#8D633D',
-    letterSpacing: 0.8,
-    marginBottom: 10,
-    textAlign: 'center',
-  },
-  quickGrid: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  quickBtn: {
-    flex: 1,
-    backgroundColor: '#FFFDF9',
-    borderRadius: 10,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(74, 46, 24, 0.12)',
-    alignItems: 'center',
-  },
-  quickBtnTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#4A2E18',
-    marginBottom: 2,
-  },
-  quickBtnSub: {
-    fontSize: 10,
-    color: '#8D633D',
   },
 });

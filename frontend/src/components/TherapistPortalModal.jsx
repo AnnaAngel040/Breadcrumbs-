@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { getTherapistPatients } from '../services/api';
+import ReportModal from './ReportModal';
 
 export default function TherapistPortalModal({
   onClose,
@@ -18,6 +19,7 @@ export default function TherapistPortalModal({
 }) {
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedReportPatientId, setSelectedReportPatientId] = useState(null);
 
   useEffect(() => {
     setLoading(true);
@@ -101,20 +103,25 @@ export default function TherapistPortalModal({
 
                 <TouchableOpacity
                   style={styles.viewReportBtn}
-                  onPress={() =>
-                    onSelectPatient({
-                      user_id: p.patient_id,
-                      display_name: p.display_name || p.patient_id,
-                    })
-                  }
+                  onPress={() => setSelectedReportPatientId(p.patient_id)}
                 >
-                  <Text style={styles.viewReportBtnText}>Open Patient Hero Screen →</Text>
+                  <Text style={styles.viewReportBtnText}>📊 View Full Patient Report →</Text>
                 </TouchableOpacity>
               </View>
             );
           })
         )}
       </ScrollView>
+
+      {/* Embedded Full Clinical Report Modal for Therapist */}
+      {selectedReportPatientId && (
+        <ReportModal
+          visible={!!selectedReportPatientId}
+          onClose={() => setSelectedReportPatientId(null)}
+          userId={selectedReportPatientId}
+          therapistId={therapistId}
+        />
+      )}
     </SafeAreaView>
   );
 }

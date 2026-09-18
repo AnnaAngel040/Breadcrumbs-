@@ -13,10 +13,10 @@ import {
 
 import Mascot from './components/Mascot';
 import CalendarModal from './components/CalendarModal';
-import ReportModal from './components/ReportModal';
 import ProfileModal from './components/ProfileModal';
 import WelcomePage from './components/WelcomePage';
 import TherapistPortalModal from './components/TherapistPortalModal';
+import StressInsightsPage from './components/StressInsightsPage';
 import {
   checkBackendStatus,
   submitTextEntry,
@@ -24,13 +24,12 @@ import {
 } from './services/api';
 
 // ─── Hero Screen (patient check-in view) ──────────────────────────────────────
-function HeroScreen({ account, onBack }) {
+function HeroScreen({ account, onBack, onOpenInsights, onSwitchPersona }) {
   const userId = account?.user_id ?? 'demo_escalating';
   const [backendOnline, setBackendOnline] = useState(false);
 
   // Modals
   const [calendarVisible, setCalendarVisible] = useState(false);
-  const [reportVisible, setReportVisible] = useState(false);
   const [profileVisible, setProfileVisible] = useState(false);
 
   // Recording & Input States
@@ -255,33 +254,12 @@ function HeroScreen({ account, onBack }) {
         {lastResult && (
           <Animated.View style={[styles.resultCard, { opacity: resultFadeAnim }]}>
             <View style={styles.resultHeader}>
-              <Text style={styles.resultCheck}>✓ Check-in Logged</Text>
-              <Text style={styles.resultCategory}>📂 {lastResult.category}</Text>
+              <Text style={styles.resultCheck}>✓ Check-in Logged to Sanctuary</Text>
+              <Text style={styles.resultCategory}>🌱 {lastResult.category}</Text>
             </View>
-            <View style={styles.scoreRow}>
-              <Text style={styles.scoreLabel}>Detected Stress Level:</Text>
-              <Text
-                style={[
-                  styles.scoreValue,
-                  {
-                    color:
-                      lastResult.stress_score > 0.7
-                        ? '#DC2626'
-                        : lastResult.stress_score > 0.4
-                        ? '#D97706'
-                        : '#16A34A',
-                  },
-                ]}
-              >
-                {Math.round((lastResult.stress_score || 0) * 100)}%
-              </Text>
-            </View>
-            <TouchableOpacity
-              style={styles.viewReportBtn}
-              onPress={() => setReportVisible(true)}
-            >
-              <Text style={styles.viewReportBtnText}>View Clinical Insights & Trends →</Text>
-            </TouchableOpacity>
+            <Text style={styles.gentleAffirmation}>
+              "Your reflection has been safely stored. Take a deep breath—you are taking mindful steps forward."
+            </Text>
           </Animated.View>
         )}
       </View>
@@ -292,21 +270,17 @@ function HeroScreen({ account, onBack }) {
         onClose={() => setCalendarVisible(false)}
         userId={userId}
       />
-      <ReportModal
-        visible={reportVisible}
-        onClose={() => setReportVisible(false)}
-        userId={userId}
-      />
       <ProfileModal
         visible={profileVisible}
         onClose={() => setProfileVisible(false)}
         userId={userId}
-        onSelectUser={() => {}}
-        onOpenReport={() => {
-          setProfileVisible(false);
-          setReportVisible(true);
-        }}
+        account={account}
+        onSignOut={onBack}
         backendOnline={backendOnline}
+        onSwitchPersona={(p) => {
+          if (onSwitchPersona) onSwitchPersona(p);
+          setProfileVisible(false);
+        }}
       />
 
       {/* Back to Welcome */}
@@ -342,6 +316,17 @@ export default function App() {
       <WelcomePage
         onEnterAsPatient={handleEnterAsPatient}
         onEnterAsTherapist={handleEnterAsTherapist}
+        onOpenInsights={() => setScreen('insights')}
+      />
+    );
+  }
+
+  if (screen === 'insights') {
+    return (
+      <StressInsightsPage
+        account={activeAccount}
+        onBack={() => setScreen(activeAccount ? 'hero' : 'welcome')}
+        onNavigateToCheckIn={() => setScreen('hero')}
       />
     );
   }
@@ -362,6 +347,8 @@ export default function App() {
     <HeroScreen
       account={activeAccount}
       onBack={() => setScreen('welcome')}
+      onOpenInsights={() => setScreen('insights')}
+      onSwitchPersona={(p) => setActiveAccount(p)}
     />
   );
 }
@@ -569,31 +556,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#6B4423',
   },
-  scoreRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginVertical: 4,
-  },
-  scoreLabel: {
-    fontSize: 13,
-    color: '#7C522D',
-  },
-  scoreValue: {
-    fontSize: 15,
-    fontWeight: '800',
-  },
-  viewReportBtn: {
-    marginTop: 8,
-    paddingTop: 8,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(74, 46, 24, 0.08)',
-    alignItems: 'center',
-  },
-  viewReportBtnText: {
+  gentleAffirmation: {
     fontSize: 12,
-    fontWeight: '700',
-    color: '#5C3818',
+    color: '#7C522D',
+    fontStyle: 'italic',
+    lineHeight: 18,
+    marginTop: 4,
   },
   signOutBtn: {
     position: 'absolute',

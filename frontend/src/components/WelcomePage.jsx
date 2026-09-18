@@ -11,7 +11,7 @@ import {
 } from 'react-native';
 import AuthModal from './AuthModal';
 
-export default function WelcomePage({ onEnterAsPatient, onEnterAsTherapist }) {
+export default function WelcomePage({ onEnterAsPatient, onEnterAsTherapist, onOpenInsights }) {
   const [authVisible, setAuthVisible] = useState(false);
   const [authRole, setAuthRole] = useState('patient');
   const [authMode, setAuthMode] = useState('signin');
@@ -60,7 +60,10 @@ export default function WelcomePage({ onEnterAsPatient, onEnterAsTherapist }) {
             <TouchableOpacity onPress={() => openAuth('patient', 'signin')}>
               <Text style={styles.navLink}>Check-in</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => openAuth('patient', 'signin')}>
+            <TouchableOpacity onPress={() => {
+              if (onOpenInsights) onOpenInsights();
+              else openAuth('patient', 'signin');
+            }}>
               <Text style={styles.navLink}>Stress Insights</Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.signInBtn} onPress={() => openAuth('patient', 'signin')}>
@@ -146,6 +149,7 @@ export default function WelcomePage({ onEnterAsPatient, onEnterAsTherapist }) {
               >
                 <Text style={styles.primaryBtnText}>Continue as Provider →</Text>
               </TouchableOpacity>
+              <View style={styles.actionSpacer} />
             </View>
           </View>
         </View>
@@ -282,6 +286,7 @@ const styles = StyleSheet.create({
     maxWidth: 900,
     width: '100%',
     alignSelf: 'center',
+    alignItems: 'stretch',
     flexWrap: 'wrap',
   },
   card: {
@@ -408,6 +413,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: '#5C3818',
+  },
+  actionSpacer: {
+    width: '100%',
+    height: 38,
   },
 
   // Footer

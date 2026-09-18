@@ -9,9 +9,9 @@ import {
   SafeAreaView,
   Linking,
 } from 'react-native';
-import { fetchUserReport, fetchTherapists } from '../services/api';
+import { fetchUserReport, fetchTherapists, fetchTherapistPatientReport } from '../services/api';
 
-export default function ReportModal({ visible, onClose, userId }) {
+export default function ReportModal({ visible, onClose, userId, therapistId = null }) {
   const [report, setReport] = useState(null);
   const [therapists, setTherapists] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -19,7 +19,11 @@ export default function ReportModal({ visible, onClose, userId }) {
   useEffect(() => {
     if (visible) {
       setLoading(true);
-      fetchUserReport(userId).then(async (rep) => {
+      const reportPromise = therapistId
+        ? fetchTherapistPatientReport(therapistId, userId)
+        : fetchUserReport(userId);
+
+      reportPromise.then(async (rep) => {
         setReport(rep);
         const topCat = rep.stressors && rep.stressors.length > 0 ? rep.stressors[0].category : 'Work/Career';
         const thList = await fetchTherapists(userId, topCat);
@@ -27,7 +31,7 @@ export default function ReportModal({ visible, onClose, userId }) {
         setLoading(false);
       });
     }
-  }, [visible, userId]);
+  }, [visible, userId, therapistId]);
 
   const getSeverityStyle = (sev) => {
     switch (sev) {

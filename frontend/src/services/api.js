@@ -253,19 +253,22 @@ export async function createAccount(userId, displayName, role = 'patient', email
         role: role,
         email: email || undefined
       }),
-      signal: AbortSignal.timeout(3500)
+      signal: AbortSignal.timeout(4000)
     });
     if (res.ok) {
       return await res.json();
     } else if (res.status === 409) {
-      throw new Error('This User ID is already registered.');
+      throw new Error(`User ID "${userId}" is already registered. Please sign in or use another username.`);
+    } else {
+      const errData = await res.json().catch(() => ({}));
+      throw new Error(errData.detail || 'Failed to create account.');
     }
   } catch (err) {
-    if (err.message.includes('already registered')) throw err;
+    if (err.message.includes('already registered') || err.message.includes('Failed to create')) throw err;
     console.warn('Backend accounts unavailable, saving simulated account:', err.message);
   }
 
-  // Fallback simulation
+  // Fallback simulation for offline mode
   const newAccount = {
     user_id: userId,
     display_name: displayName,
@@ -279,12 +282,24 @@ export async function createAccount(userId, displayName, role = 'patient', email
 
 export async function getAccount(userId) {
   try {
-    const res = await fetch(`${BASE_URL}/accounts/${encodeURIComponent(userId)}`, { signal: AbortSignal.timeout(2500) });
-    if (res.ok) return await res.json();
+    const res = await fetch(`${BASE_URL}/accounts/${encodeURIComponent(userId)}`, { signal: AbortSignal.timeout(3000) });
+    if (res.ok) {
+      return await res.json();
+    } else if (res.status === 404) {
+      if (!fallbackAccounts[userId]) {
+        throw new Error(`Account "${userId}" not found. Please click "Create Account" first.`);
+      }
+    }
   } catch (err) {
-    // fallback
+    if (err.message.includes('not found')) throw err;
+    console.warn('Backend accounts endpoint unreachable:', err.message);
   }
-  return fallbackAccounts[userId] || {
+
+  if (fallbackAccounts[userId]) {
+    return fallbackAccounts[userId];
+  }
+
+  return {
     user_id: userId,
     display_name: userId,
     role: userId.startsWith('th_') ? 'therapist' : 'patient',
@@ -357,4 +372,17 @@ export async function linkTherapistPatient(therapistId, patientId) {
   }
   return { therapist_id: therapistId, patient_id: patientId, linked_at: new Date().toISOString() };
 }
+
+export async function fetchTherapistPatientReport(therapistId, patientId) {
+  try {
+    const res = await fetch(`${BASE_URL}/therapists/${encodeURIComponent(therapistId)}/patients/${encodeURIComponent(patientId)}/report`, {
+      signal: AbortSignal.timeout(3500)
+    });
+    if (res.ok) return await res.json();
+  } catch (e) {
+    console.warn('Therapist report endpoint unreachable, falling back to local computation:', e.message);
+  }
+  return fetchUserReport(patientId);
+}
+
 
