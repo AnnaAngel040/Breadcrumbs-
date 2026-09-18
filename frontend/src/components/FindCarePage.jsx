@@ -932,15 +932,18 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FAF5ED',
     width: '100%',
-    minHeight: '100vh',
+    height: '100vh',
+    maxHeight: '100vh',
+    overflow: 'hidden',
   },
   scrollView: {
     flex: 1,
     width: '100%',
+    height: '100%',
   },
   scrollContent: {
     flexGrow: 1,
-    paddingBottom: 80,
+    paddingBottom: 100,
   },
 
   // ─── Navbar ─────────────────────────────────────────────────────────────

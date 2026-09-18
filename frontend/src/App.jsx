@@ -381,10 +381,8 @@ function HeroScreen({ account, onBack, onNavigateToFindCare, onSignOut, onSelect
         {/* Patient-Safe Reflection Card (Zero Clinical Scores) */}
         {lastResult && (() => {
           const score = lastResult.stress_score ?? 0.5;
-          const isStressor = lastResult.is_stressor === true ||
-            (score >= 0.35) ||
-            Boolean(lastResult.is_flagged) ||
-            (lastResult.category !== 'Wellbeing' && lastResult.category !== 'General Reflection');
+          const isStressor = Boolean(lastResult.is_flagged) ||
+            (lastResult.is_stressor !== undefined ? Boolean(lastResult.is_stressor) : (score >= 0.35));
 
           return (
             <Animated.View style={[styles.resultCard, { opacity: resultFadeAnim }]}>

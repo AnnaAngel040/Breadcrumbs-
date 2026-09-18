@@ -1,4 +1,4 @@
-﻿"""
+"""
 sentiment_intensity.py
 
 Linguistic Intensity and Sentiment Analysis Layer for Person B.
@@ -18,15 +18,16 @@ from typing import Dict, Any
 AROUSAL_KEYWORDS = {
     "panic", "panicking", "racing", "overwhelmed", "shaking", "terrified",
     "can't breathe", "suffocating", "heart pounding", "hyperventilating",
-    "exploding", "screaming", "crying", "breakdown", "freaking out",
-    "exhausted", "paralyzed", "jittery", "nauseous", "drowning"
+    "exploding", "screaming", "crying", "cry", "breakdown", "freaking out",
+    "exhausted", "paralyzed", "jittery", "nauseous", "drowning", "breakup"
 }
 
 # Negative valence / depressive keywords (sorrow, low mood, despair)
 NEGATIVE_VALENCE_KEYWORDS = {
     "sad", "depressed", "miserable", "hopeless", "worthless", "awful",
-    "terrible", "dreadful", "hating", "disaster", "ruined", "lonely",
-    "unhappy", "drained", "guilty", "ashamed", "burden", "pointless"
+    "terrible", "horrible", "dreadful", "hating", "disaster", "ruined", "lonely",
+    "unhappy", "drained", "guilty", "ashamed", "burden", "pointless",
+    "breakup", "heartbroken", "cheated", "evicted", "eviction"
 }
 
 # Positive valence keywords (buffers / emotional resilience indicators)
