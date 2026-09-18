@@ -4,40 +4,55 @@ import { View, Image, StyleSheet, Animated, Platform } from 'react-native';
 export default function Mascot({ state = 'idle', size = 110 }) {
   const floatAnim = useRef(new Animated.Value(0)).current;
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  const rotateAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    // Gentle floating loop
+    // Gentle organic floating & bobbing loop
     const floatLoop = Animated.loop(
       Animated.sequence([
-        Animated.timing(floatAnim, {
-          toValue: -8,
-          duration: 1800,
-          useNativeDriver: true,
-        }),
-        Animated.timing(floatAnim, {
-          toValue: 0,
-          duration: 1800,
-          useNativeDriver: true,
-        }),
+        Animated.parallel([
+          Animated.timing(floatAnim, {
+            toValue: -10,
+            duration: 1600,
+            useNativeDriver: true,
+          }),
+          Animated.timing(rotateAnim, {
+            toValue: 1,
+            duration: 1600,
+            useNativeDriver: true,
+          }),
+        ]),
+        Animated.parallel([
+          Animated.timing(floatAnim, {
+            toValue: 2,
+            duration: 1600,
+            useNativeDriver: true,
+          }),
+          Animated.timing(rotateAnim, {
+            toValue: -1,
+            duration: 1600,
+            useNativeDriver: true,
+          }),
+        ]),
       ])
     );
     floatLoop.start();
 
     return () => floatLoop.stop();
-  }, [floatAnim]);
+  }, [floatAnim, rotateAnim]);
 
   useEffect(() => {
     if (state === 'listening') {
       const pulseLoop = Animated.loop(
         Animated.sequence([
           Animated.timing(pulseAnim, {
-            toValue: 1.15,
-            duration: 600,
+            toValue: 1.18,
+            duration: 500,
             useNativeDriver: true,
           }),
           Animated.timing(pulseAnim, {
             toValue: 1.0,
-            duration: 600,
+            duration: 500,
             useNativeDriver: true,
           }),
         ])
@@ -49,6 +64,11 @@ export default function Mascot({ state = 'idle', size = 110 }) {
     }
   }, [state, pulseAnim]);
 
+  const spin = rotateAnim.interpolate({
+    inputRange: [-1, 0, 1],
+    outputRange: ['-2deg', '0deg', '2deg'],
+  });
+
   return (
     <View style={styles.container}>
       {/* Animated Aura during listening / speaking */}
@@ -57,9 +77,9 @@ export default function Mascot({ state = 'idle', size = 110 }) {
           style={[
             styles.aura,
             {
-              width: size * 1.5,
-              height: size * 1.5,
-              borderRadius: (size * 1.5) / 2,
+              width: size * 1.6,
+              height: size * 1.6,
+              borderRadius: (size * 1.6) / 2,
               transform: [{ scale: pulseAnim }],
             },
           ]}
@@ -73,13 +93,16 @@ export default function Mascot({ state = 'idle', size = 110 }) {
           {
             width: size,
             height: size,
-            transform: [{ translateY: floatAnim }],
+            transform: [
+              { translateY: floatAnim },
+              { rotate: spin },
+            ],
           },
         ]}
       >
         <Image
-          source={{ uri: '/image-removebg.svg' }}
-          style={{ width: size * 1.15, height: size * 0.9 }}
+          source={{ uri: '/image-removebg-preview%201.svg' }}
+          style={{ width: size * 1.25, height: size * 1.05 }}
           resizeMode="contain"
           accessibilityLabel="Smiling Toast Mascot"
         />
