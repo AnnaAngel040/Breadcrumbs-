@@ -112,7 +112,7 @@ export default function ReportModal({ visible, onClose, userId, therapistId = nu
                 
                 <View style={styles.statusRow}>
                   <View>
-                    <Text style={styles.userIdText}>User: {report.anonymous_id}</Text>
+                    <Text style={styles.userIdText}>Patient ID: <Text style={{ fontWeight: '700', color: '#4A2E18' }}>{report.anonymous_id}</Text></Text>
                     <Text style={styles.decayScoreTitle}>
                       7-Day Decay Stress: {Math.round((report.overall_decay_score || 0) * 100)}%
                     </Text>
@@ -145,21 +145,52 @@ export default function ReportModal({ visible, onClose, userId, therapistId = nu
                   />
                 </View>
                 <Text style={styles.decayExplanation}>
-                  * Uses a 7-day half-life exponential moving average to smooth recent spikes vs. chronic stress patterns.
+                  * Uses a 7-day half-life exponential moving average: weight(t) = exp(-0.099 · Δdays).
                 </Text>
+
+                {/* Quick Clinical Metrics Grid */}
+                <View style={styles.metricsGrid}>
+                  <View style={styles.metricCell}>
+                    <Text style={styles.metricCellLabel}>ACTIVE TOPICS</Text>
+                    <Text style={styles.metricCellValue}>{report.stressors ? report.stressors.length : 0}</Text>
+                  </View>
+                  <View style={styles.metricCell}>
+                    <Text style={styles.metricCellLabel}>TOTAL REFLECTIONS</Text>
+                    <Text style={styles.metricCellValue}>
+                      {report.stressors ? report.stressors.reduce((acc, s) => acc + (s.entry_count || 0), 0) : 0}
+                    </Text>
+                  </View>
+                  <View style={styles.metricCell}>
+                    <Text style={styles.metricCellLabel}>PRIMARY SEVERITY</Text>
+                    <Text style={[styles.metricCellValue, { color: getSeverityStyle(report.overall_severity).color }]}>
+                      {report.overall_severity ? report.overall_severity.toUpperCase() : 'LOW'}
+                    </Text>
+                  </View>
+                </View>
               </View>
 
               {/* Stressor Threads */}
               <View style={styles.card}>
-                <Text style={styles.sectionLabel}>ACTIVE STRESSOR THREADS</Text>
+                <Text style={styles.sectionLabel}>ACTIVE STRESSOR THREADS (SEMANTIC CLUSTERING)</Text>
                 {report.stressors && report.stressors.length > 0 ? (
                   report.stressors.map((th, i) => {
                     const trend = getTrendIcon(th.trend);
                     const sevStyle = getSeverityStyle(th.severity);
+                    const isSubThread = th.category && th.category.includes('#');
+                    const cleanCategoryName = isSubThread ? th.category.split('#')[0] : th.category;
+                    const subThreadIndex = isSubThread ? `#${th.category.split('#')[1]}` : null;
+
                     return (
                       <View key={i} style={styles.threadItem}>
                         <View style={styles.threadTop}>
-                          <Text style={styles.threadCategory}>{th.category}</Text>
+                          <View style={styles.categoryTitleRow}>
+                            <Text style={styles.threadCategory}>{cleanCategoryName}</Text>
+                            {subThreadIndex && (
+                              <View style={styles.subThreadPill}>
+                                <Text style={styles.subThreadPillText}>Topic {subThreadIndex}</Text>
+                              </View>
+                            )}
+                          </View>
                           <View style={styles.trendRow}>
                             <Text style={[styles.trendText, { color: trend.color }]}>
                               {trend.icon} {trend.text}
@@ -172,26 +203,31 @@ export default function ReportModal({ visible, onClose, userId, therapistId = nu
                               {sevStyle.label}
                             </Text>
                           </View>
-                          <Text style={styles.threadStat}>Entries: {th.entry_count}</Text>
+                          <Text style={styles.threadStat}>Reflections: <Text style={styles.statBold}>{th.entry_count}</Text></Text>
                           <Text style={styles.threadStat}>
-                            Decay: {Math.round((th.current_decay_score || 0) * 100)}%
+                            7-Day Decay: <Text style={styles.statBold}>{Math.round((th.current_decay_score || 0) * 100)}%</Text>
                           </Text>
+                          {th.latest_score !== undefined && (
+                            <Text style={styles.threadStat}>
+                              Latest Raw: <Text style={styles.statBold}>{Math.round(th.latest_score * 100)}%</Text>
+                            </Text>
+                          )}
                         </View>
                         {th.recent_triggers && th.recent_triggers.length > 0 && (
                           <View style={styles.triggersBox}>
-                            <Text style={styles.triggersLabel}>Recent Triggers:</Text>
+                            <Text style={styles.triggersLabel}>NLP Extracted Root Triggers:</Text>
                             {th.recent_triggers.map((trigger, ti) => (
                               <View key={ti} style={styles.triggerPill}>
-                                <Text style={styles.triggerText}>• {trigger}</Text>
+                                <Text style={styles.triggerText}>• "{trigger}"</Text>
                               </View>
                             ))}
                           </View>
                         )}
                         {th.latest_reason && (!th.recent_triggers || th.recent_triggers.length === 0) && (
                           <View style={styles.triggersBox}>
-                            <Text style={styles.triggersLabel}>Latest Trigger:</Text>
+                            <Text style={styles.triggersLabel}>NLP Extracted Root Trigger:</Text>
                             <View style={styles.triggerPill}>
-                              <Text style={styles.triggerText}>• {th.latest_reason}</Text>
+                              <Text style={styles.triggerText}>• "{th.latest_reason}"</Text>
                             </View>
                           </View>
                         )}
@@ -440,5 +476,52 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#5C3818',
     lineHeight: 18,
+  },
+  // ─── Metrics Grid ─────────────────────────────
+  metricsGrid: {
+    flexDirection: 'row',
+    gap: 8,
+    marginTop: 14,
+    backgroundColor: '#FAF5EA',
+    borderRadius: 12,
+    padding: 10,
+  },
+  metricCell: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  metricCellLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: '#8D633D',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  metricCellValue: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#4A2E18',
+  },
+  // ─── Sub-Thread Styles ────────────────────────
+  categoryTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  subThreadPill: {
+    backgroundColor: '#E0E7FF',
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  subThreadPillText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#4338CA',
+  },
+  statBold: {
+    fontWeight: '700',
+    color: '#4A2E18',
   },
 });
