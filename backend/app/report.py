@@ -62,12 +62,19 @@ def build_report(
             "severity": severity,
             "entry_count": len(thread_entries),
             "latest_score": latest_score,
+            "latest_date": latest_entry.get("date", ""),
             "current_decay_score": current_decay_score,
             "active_stressor_count": num_active_stressors,
             "latest_reason": latest_reason,
             "recent_triggers": recent_triggers,
         })
         severities.append(severity)
+
+    # Sort stressors so the most recent / actively updated stress category is primary
+    stressor_summaries.sort(
+        key=lambda s: (s.get("latest_date", ""), s.get("latest_score", 0.0), s.get("current_decay_score", 0.0)),
+        reverse=True
+    )
 
     final_severity = overall_severity(severities)
     overall_decay_score = compute_time_decay_stress(entries)
