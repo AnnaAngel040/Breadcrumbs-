@@ -12,7 +12,32 @@ matching, report) still works fine on category-only threads.
 """
 
 from collections import defaultdict
-from typing import Callable, Optional
+from typing import Callable, Optional, Any
+
+
+def _evaluate_similarity(
+    similarity_fn: Callable[[str, str], Any],
+    text_a: str,
+    text_b: str,
+    threshold: float = 0.3,
+) -> bool:
+    """Helper to evaluate similarity_fn regardless of whether it returns:
+    - (is_same: bool, score: float)
+    - score: float
+    - is_same: bool
+    """
+    res = similarity_fn(text_a, text_b)
+    if isinstance(res, tuple) or isinstance(res, list):
+        # (is_same, score) contract
+        is_same = res[0]
+        if isinstance(is_same, bool):
+            return is_same
+        return float(res[1]) >= threshold
+    elif isinstance(res, bool):
+        return res
+    elif isinstance(res, (int, float)):
+        return float(res) >= threshold
+    return True
 
 
 def get_stressor_threads(entries: list[dict]) -> dict[str, list[dict]]:
@@ -27,19 +52,13 @@ def get_stressor_threads(entries: list[dict]) -> dict[str, list[dict]]:
 
 def refine_threads_with_similarity(
     category_entries: list[dict],
-    similarity_fn: Callable[[str, str], float],
-    threshold: float = 0.7,
+    similarity_fn: Callable[[str, str], Any],
+    threshold: float = 0.3,
 ) -> list[list[dict]]:
     """Split one category's entries into finer sub-threads using pairwise
     similarity against each existing sub-thread's most recent entry.
 
-    similarity_fn(text_a, text_b) -> float in [0, 1], supplied by Person C.
-
-    Greedy single-pass grouping: for each entry (in date order), compare it
-    to the latest entry of each existing sub-thread; join the first
-    sub-thread that clears `threshold`, else start a new one. This is
-    intentionally simple — good enough to demo, not claiming to be optimal
-    clustering.
+    similarity_fn(text_a, text_b) -> (bool, float) | float | bool
     """
     if not category_entries:
         return []
@@ -50,8 +69,7 @@ def refine_threads_with_similarity(
         placed = False
         for sub_thread in sub_threads:
             latest_in_group = sub_thread[-1]
-            score = similarity_fn(entry["transcript"], latest_in_group["transcript"])
-            if score >= threshold:
+            if _evaluate_similarity(similarity_fn, entry.get("transcript", ""), latest_in_group.get("transcript", ""), threshold):
                 sub_thread.append(entry)
                 placed = True
                 break
@@ -63,17 +81,26 @@ def refine_threads_with_similarity(
 
 def build_threads(
     entries: list[dict],
-    similarity_fn: Optional[Callable[[str, str], float]] = None,
-    similarity_threshold: float = 0.7,
+    similarity_fn: Optional[Callable[[str, str], Any]] = None,
+    similarity_threshold: float = 0.3,
 ) -> dict[str, list[dict]]:
     """Top-level entry point: category threads, optionally refined into
-    sub-threads. If similarity_fn is None (C's function isn't wired up
-    yet), falls back to pure category threading automatically.
+    sub-threads. If similarity_fn is None, attempts to load is_same_stressor
+    from app.stressor_similarity; if unavailable, falls back to pure
+    category threading automatically.
 
     Sub-thread keys look like "Work/Career#0", "Work/Career#1" so downstream
     code (trend/severity) can treat them just like flat category threads.
     """
     category_threads = get_stressor_threads(entries)
+
+    # If similarity_fn is not provided, try to use the default sentence transformer
+    if similarity_fn is None:
+        try:
+            from app.stressor_similarity import is_same_stressor
+            similarity_fn = is_same_stressor
+        except Exception:
+            similarity_fn = None
 
     if similarity_fn is None:
         return category_threads
@@ -81,11 +108,12 @@ def build_threads(
     refined: dict[str, list[dict]] = {}
     for category, cat_entries in category_threads.items():
         sub_threads = refine_threads_with_similarity(cat_entries, similarity_fn, similarity_threshold)
-        if len(sub_threads) == 1:
+        if len(sub_threads) <= 1:
             # no meaningful split — keep the plain category key
-            refined[category] = sub_threads[0]
+            refined[category] = sub_threads[0] if sub_threads else cat_entries
         else:
             for i, sub in enumerate(sub_threads):
                 refined[f"{category}#{i}"] = sub
 
     return refined
+
