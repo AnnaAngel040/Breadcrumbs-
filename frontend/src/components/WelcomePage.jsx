@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   SafeAreaView,
   ScrollView,
-  Animated,
   Image,
 } from 'react-native';
 import AuthModal from './AuthModal';
@@ -30,13 +29,6 @@ export default function WelcomePage({ onEnterAsPatient, onEnterAsTherapist, onOp
       onEnterAsPatient(account);
     }
   };
-
-  const MemberFeature = ({ text }) => (
-    <View style={styles.featureRow}>
-      <View style={styles.featureBullet} />
-      <Text style={styles.featureText}>{text}</Text>
-    </View>
-  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -99,14 +91,8 @@ export default function WelcomePage({ onEnterAsPatient, onEnterAsTherapist, onOp
               <Text style={styles.cardTitle}>Individual / Member</Text>
               <Text style={styles.cardDesc}>
                 I want to track stress, reflect on emotional crumbs, and connect with
-                thoughtful clinical guidance.
+                thoughtful clinical guidance in a private, gentle space.
               </Text>
-
-              <Text style={styles.featureListTitle}>YOUR MEMBER SANCTUARY INCLUDES</Text>
-              <MemberFeature text="Private, low-pressure daily check-ins & reflections" />
-              <MemberFeature text="Personal stress waveforms & somatic rhythm patterns" />
-              <MemberFeature text="Personalised, values-aligned therapist matching" />
-              <MemberFeature text="24/7 gentle grounding support & mindful breathaids" />
             </View>
 
             <View style={styles.cardActions}>
@@ -137,8 +123,7 @@ export default function WelcomePage({ onEnterAsPatient, onEnterAsTherapist, onOp
 
               <Text style={styles.cardTitle}>Therapist / Counselor</Text>
               <Text style={styles.cardDesc}>
-                I am a licensed professional supporting clients and cultivating
-                restorative clinical care.
+                I am a licensed professional managing client caseloads, tracking longitudinal recovery curves, and cultivating restorative clinical care.
               </Text>
             </View>
 
@@ -154,14 +139,6 @@ export default function WelcomePage({ onEnterAsPatient, onEnterAsTherapist, onOp
           </View>
         </View>
 
-        {/* Footer Disclaimer */}
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>✦ HIPAA Compliant</Text>
-          <Text style={styles.footerDot}>·</Text>
-          <Text style={styles.footerText}>256 Bit Encrypted</Text>
-          <Text style={styles.footerDot}>·</Text>
-          <Text style={styles.footerText}>100% Privacy & Confidential</Text>
-        </View>
       </ScrollView>
 
       {/* Auth Modal */}
@@ -180,10 +157,15 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#E8D8D0',
+    width: '100%',
+    minHeight: '100vh',
   },
   scroll: {
     flexGrow: 1,
+    minHeight: '100vh',
+    backgroundColor: '#E8D8D0',
     paddingBottom: 40,
+    justifyContent: 'space-between',
   },
 
   // Navbar
@@ -191,50 +173,52 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 28,
-    paddingVertical: 10,
+    paddingHorizontal: 32,
+    paddingVertical: 16,
     backgroundColor: '#E8D8D0',
   },
   navBrand: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    gap: 12,
   },
   navLogo: {
-    width: 32,
-    height: 26,
+    width: 38,
+    height: 32,
   },
   navBrandName: {
-    fontSize: 16,
+    fontSize: 20,
     fontWeight: '700',
     color: '#4A2E18',
     fontFamily: 'Fraunces',
   },
   navBrandTag: {
-    fontSize: 9,
+    fontSize: 11,
     color: '#7C522D',
     fontStyle: 'italic',
   },
   navLinks: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 20,
+    gap: 24,
   },
   navLink: {
-    fontSize: 13,
+    fontSize: 15,
     color: '#5C3818',
-    fontWeight: '500',
+    fontWeight: '600',
+    cursor: 'pointer',
   },
   signInBtn: {
-    backgroundColor: 'rgba(255, 253, 249, 0.9)',
-    borderWidth: 1,
+    backgroundColor: 'rgba(255, 253, 249, 0.95)',
+    borderWidth: 1.5,
     borderColor: 'rgba(74, 46, 24, 0.2)',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 6,
+    borderRadius: 22,
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+    cursor: 'pointer',
   },
   signInBtnText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '700',
     color: '#4A2E18',
   },
@@ -242,64 +226,71 @@ const styles = StyleSheet.create({
   // Hero
   heroBanner: {
     alignItems: 'center',
-    paddingTop: 12,
-    paddingBottom: 14,
-    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 24,
+    paddingHorizontal: 24,
   },
   heroBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 253, 249, 0.6)',
+    backgroundColor: 'rgba(255, 253, 249, 0.7)',
     borderRadius: 20,
-    paddingHorizontal: 14,
-    paddingVertical: 4,
-    marginBottom: 8,
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(74, 46, 24, 0.1)',
   },
   heroBadgeText: {
-    fontSize: 10,
-    fontWeight: '700',
+    fontSize: 12,
+    fontWeight: '800',
     color: '#7C522D',
-    letterSpacing: 0.6,
+    letterSpacing: 0.8,
   },
   heroTitle: {
-    fontSize: 32,
+    fontSize: 38,
     fontWeight: '700',
     color: '#4A2E18',
     fontFamily: 'Fraunces',
     textAlign: 'center',
-    marginBottom: 4,
+    marginBottom: 8,
     letterSpacing: -0.5,
   },
   heroSubtitle: {
-    fontSize: 14,
+    fontSize: 17,
     color: '#6B4423',
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 24,
     fontStyle: 'italic',
+    maxWidth: 600,
   },
 
   // Cards
   cardRow: {
     flexDirection: 'row',
-    gap: 16,
-    paddingHorizontal: 20,
-    maxWidth: 900,
+    gap: 24,
+    paddingHorizontal: 24,
+    maxWidth: 960,
     width: '100%',
     alignSelf: 'center',
     alignItems: 'stretch',
     flexWrap: 'wrap',
+    marginBottom: 30,
   },
   card: {
     flex: 1,
-    minWidth: 280,
-    borderRadius: 20,
-    padding: 24,
+    minWidth: 300,
+    borderRadius: 24,
+    padding: 28,
     justifyContent: 'space-between',
+    backgroundColor: '#FFF1E8',
+    borderWidth: 1,
+    borderColor: 'rgba(74, 46, 24, 0.08)',
     shadowColor: '#4A2E18',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 3,
+    shadowRadius: 16,
+    elevation: 4,
   },
   memberCard: {
     backgroundColor: '#FFF1E8',
@@ -311,82 +302,55 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 14,
+    marginBottom: 16,
   },
   cardIconBox: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
+    width: 46,
+    height: 46,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
   cardIcon: {
-    fontSize: 20,
+    fontSize: 24,
   },
   cardAudience: {
-    fontSize: 11,
+    fontSize: 13,
     color: '#7C522D',
-    fontWeight: '600',
+    fontWeight: '700',
     letterSpacing: 0.4,
     fontStyle: 'italic',
   },
   cardTitle: {
-    fontSize: 22,
+    fontSize: 26,
     fontWeight: '700',
     color: '#3A1F09',
     fontFamily: 'Fraunces',
-    marginBottom: 8,
+    marginBottom: 12,
   },
   cardDesc: {
-    fontSize: 13,
+    fontSize: 15,
     color: '#6B4423',
-    lineHeight: 20,
-    marginBottom: 18,
-  },
-  featureListTitle: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#8D633D',
-    letterSpacing: 0.7,
-    marginBottom: 10,
-  },
-  featureRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: 7,
-  },
-  featureBullet: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#6D4330',
-    marginTop: 5,
-    marginRight: 9,
-    flexShrink: 0,
-  },
-  featureText: {
-    fontSize: 12,
-    color: '#6B4423',
-    flex: 1,
-    lineHeight: 18,
+    lineHeight: 24,
+    marginBottom: 20,
   },
   cardActions: {
     flexDirection: 'column',
-    gap: 8,
-    marginTop: 22,
+    gap: 10,
+    marginTop: 20,
     width: '100%',
   },
   primaryBtn: {
     width: '100%',
     backgroundColor: '#6D4330',
-    borderRadius: 12,
-    paddingVertical: 13,
+    borderRadius: 14,
+    paddingVertical: 15,
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#6D4330',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.25,
-    shadowRadius: 5,
+    shadowRadius: 6,
     cursor: 'pointer',
   },
   providerPrimaryBtn: {
@@ -394,47 +358,28 @@ const styles = StyleSheet.create({
   },
   primaryBtnText: {
     color: '#FFFDF9',
-    fontSize: 13,
+    fontSize: 15,
     fontWeight: '700',
-    letterSpacing: 0.2,
+    letterSpacing: 0.3,
   },
   secondaryBtn: {
     width: '100%',
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: 1,
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1.5,
     borderColor: 'rgba(109, 67, 48, 0.25)',
-    backgroundColor: 'rgba(255, 253, 249, 0.65)',
+    backgroundColor: 'rgba(255, 253, 249, 0.75)',
     alignItems: 'center',
     justifyContent: 'center',
     cursor: 'pointer',
   },
   secondaryBtnText: {
-    fontSize: 12,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '700',
     color: '#5C3818',
   },
   actionSpacer: {
     width: '100%',
-    height: 38,
-  },
-
-  // Footer
-  footer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingTop: 24,
-    gap: 8,
-    flexWrap: 'wrap',
-  },
-  footerText: {
-    fontSize: 11,
-    color: '#7C522D',
-    fontWeight: '600',
-  },
-  footerDot: {
-    fontSize: 11,
-    color: '#7C522D',
+    height: 44,
   },
 });
