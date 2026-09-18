@@ -26,6 +26,9 @@ class EntryOut(BaseModel):
     stress_score: float
     confidence: float
     similarity_group_id: Optional[str] = None
+    is_flagged: Optional[bool] = False
+    show_crisis_resources: Optional[bool] = False
+    is_stressor: Optional[bool] = False
 
 
 class ThreadOut(BaseModel):

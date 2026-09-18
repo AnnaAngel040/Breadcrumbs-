@@ -45,7 +45,7 @@ export async function submitTextEntry(userId, transcript) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ user_id: userId, transcript }),
-      signal: AbortSignal.timeout(4000)
+      signal: AbortSignal.timeout(20000)
     });
     if (res.ok) return await res.json();
   } catch (e) {
@@ -56,22 +56,36 @@ export async function submitTextEntry(userId, transcript) {
   const lower = transcript.toLowerCase();
   let category = "General Reflection";
   let stress_score = 0.45;
+  let is_stressor = false;
 
-  if (lower.includes("die") || lower.includes("kill") || lower.includes("end it") || lower.includes("suicide") || lower.includes("hopeless")) {
+  if (lower.includes("die") || lower.includes("kill") || lower.includes("end it") || lower.includes("suicide") || lower.includes("hopeless") || lower.includes("kms") || lower.includes("hit me")) {
     category = "Crisis / Acute Risk";
     stress_score = 0.95;
-  } else if (lower.includes("work") || lower.includes("deadline") || lower.includes("boss") || lower.includes("job") || lower.includes("career")) {
+    is_stressor = true;
+  } else if (lower.includes("rent") || lower.includes("money") || lower.includes("evict") || lower.includes("broke") || lower.includes("debt") || lower.includes("bills") || lower.includes("afford")) {
+    category = "Finances";
+    stress_score = 0.82;
+    is_stressor = true;
+  } else if (lower.includes("work") || lower.includes("deadline") || lower.includes("boss") || lower.includes("job") || lower.includes("career") || lower.includes("manager")) {
     category = "Work/Career";
     stress_score = 0.78;
-  } else if (lower.includes("exam") || lower.includes("study") || lower.includes("school") || lower.includes("grade")) {
+    is_stressor = true;
+  } else if (lower.includes("exam") || lower.includes("study") || lower.includes("school") || lower.includes("grade") || lower.includes("homework")) {
     category = "Academics";
     stress_score = 0.68;
-  } else if (lower.includes("family") || lower.includes("mom") || lower.includes("dad") || lower.includes("partner") || lower.includes("friend")) {
-    category = "Relationships";
-    stress_score = 0.52;
-  } else if (lower.includes("happy") || lower.includes("peace") || lower.includes("good") || lower.includes("great") || lower.includes("relaxed")) {
+    is_stressor = true;
+  } else if (lower.includes("family") || lower.includes("mom") || lower.includes("dad") || lower.includes("partner") || lower.includes("friend") || lower.includes("boyfriend") || lower.includes("girlfriend") || lower.includes("breakup")) {
+    category = "Relationship";
+    stress_score = 0.72;
+    is_stressor = true;
+  } else if (lower.includes("tired") || lower.includes("exhausted") || lower.includes("pain") || lower.includes("sick") || lower.includes("can't sleep")) {
+    category = "Health";
+    stress_score = 0.65;
+    is_stressor = true;
+  } else if (lower.includes("happy") || lower.includes("peace") || lower.includes("good") || lower.includes("great") || lower.includes("relaxed") || lower.includes("fun")) {
     category = "Wellbeing";
-    stress_score = 0.18;
+    stress_score = 0.12;
+    is_stressor = false;
   }
 
   const simulated = {
