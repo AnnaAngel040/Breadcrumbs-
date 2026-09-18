@@ -1,0 +1,20 @@
+{
+  "expo": {
+    "name": "Breadcrumbs",
+    "slug": "breadcrumbs",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./public/image-removebg.svg",
+    "userInterfaceStyle": "light",
+    "backgroundColor": "#F6EAC9",
+    "splash": {
+      "image": "./public/image-removebg.svg",
+      "resizeMode": "contain",
+      "backgroundColor": "#F6EAC9"
+    },
+    "web": {
+      "favicon": "./public/image-removebg.svg",
+      "bundler": "metro"
+    }
+  }
+}
