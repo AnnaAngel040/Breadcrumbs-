@@ -345,16 +345,16 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(74, 46, 24, 0.14)',
   },
   submitBtn: {
-    backgroundColor: '#6D4330',
-    borderRadius: 14,
+    backgroundColor: '#4A2E18',
+    borderRadius: 24,
     paddingVertical: 14,
     alignItems: 'center',
     marginTop: 10,
     marginBottom: 24,
-    shadowColor: '#6D4330',
-    shadowOffset: { width: 0, height: 3 },
+    shadowColor: '#4A2E18',
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.2,
-    shadowRadius: 6,
+    shadowRadius: 4,
     cursor: 'pointer',
   },
   submitBtnDisabled: {
@@ -364,5 +364,6 @@ const styles = StyleSheet.create({
     color: '#FFFDF9',
     fontSize: 14,
     fontWeight: '700',
+    letterSpacing: 0.2,
   },
 });

@@ -94,19 +94,13 @@ export default function WelcomePage({
 
           {/* Individual / Member Card */}
           <View style={[styles.card, styles.memberCard]}>
-            <View>
-              <View style={styles.cardHeader}>
-                <View style={[styles.cardIconBox, { backgroundColor: '#F5E6DC' }]}>
-                  <Text style={styles.cardIcon}>🤎</Text>
-                </View>
-                <Text style={styles.cardAudience}>For Seekers & Individuals</Text>
+            <View style={styles.cardTopContent}>
+              <View style={styles.cardIconBox}>
+                <Text style={styles.cardIcon}>♡</Text>
               </View>
 
               <Text style={styles.cardTitle}>Individual / Member</Text>
-              <Text style={styles.cardDesc}>
-                I want to track stress, reflect on emotional crumbs, and connect with
-                thoughtful clinical guidance in a private, gentle space.
-              </Text>
+              <Text style={styles.cardSubtitle}>For Seekers & Individuals</Text>
             </View>
 
             <View style={styles.cardActions}>
@@ -127,28 +121,22 @@ export default function WelcomePage({
 
           {/* Therapist / Counselor Card */}
           <View style={[styles.card, styles.therapistCard]}>
-            <View>
-              <View style={styles.cardHeader}>
-                <View style={[styles.cardIconBox, { backgroundColor: '#E8DAD3' }]}>
-                  <Text style={styles.cardIcon}>🩺</Text>
-                </View>
-                <Text style={styles.cardAudience}>For Clinicians & Healers</Text>
+            <View style={styles.cardTopContent}>
+              <View style={styles.cardIconBox}>
+                <Text style={styles.cardIcon}>⚕</Text>
               </View>
 
               <Text style={styles.cardTitle}>Therapist / Counselor</Text>
-              <Text style={styles.cardDesc}>
-                I am a licensed professional managing client caseloads, tracking longitudinal recovery curves, and cultivating restorative clinical care.
-              </Text>
+              <Text style={styles.cardSubtitle}>For Clinicians & Healers</Text>
             </View>
 
             <View style={styles.cardActions}>
               <TouchableOpacity
-                style={[styles.primaryBtn, styles.providerPrimaryBtn]}
+                style={styles.primaryBtn}
                 onPress={() => openAuth('therapist', 'signin')}
               >
                 <Text style={styles.primaryBtnText}>Continue as Provider →</Text>
               </TouchableOpacity>
-              <View style={styles.actionSpacer} />
             </View>
           </View>
         </View>
@@ -170,14 +158,14 @@ export default function WelcomePage({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#E8D8D0',
+    backgroundColor: '#F7ECCD',
     width: '100%',
     minHeight: '100vh',
   },
   scroll: {
     flexGrow: 1,
     minHeight: '100vh',
-    backgroundColor: '#E8D8D0',
+    backgroundColor: '#F7ECCD',
     paddingBottom: 40,
     justifyContent: 'space-between',
   },
@@ -189,7 +177,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 32,
     paddingVertical: 16,
-    backgroundColor: '#E8D8D0',
+    backgroundColor: '#F7ECCD',
   },
   navBrand: {
     flexDirection: 'row',
@@ -225,7 +213,7 @@ const styles = StyleSheet.create({
   signInBtn: {
     backgroundColor: 'rgba(255, 253, 249, 0.95)',
     borderWidth: 1.5,
-    borderColor: 'rgba(74, 46, 24, 0.2)',
+    borderColor: 'rgba(74, 46, 24, 0.25)',
     borderRadius: 22,
     paddingHorizontal: 18,
     paddingVertical: 8,
@@ -241,28 +229,28 @@ const styles = StyleSheet.create({
   heroBanner: {
     alignItems: 'center',
     paddingTop: 16,
-    paddingBottom: 24,
+    paddingBottom: 28,
     paddingHorizontal: 24,
   },
   heroBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 253, 249, 0.7)',
+    backgroundColor: 'rgba(255, 253, 249, 0.75)',
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 6,
-    marginBottom: 12,
+    marginBottom: 14,
     borderWidth: 1,
-    borderColor: 'rgba(74, 46, 24, 0.1)',
+    borderColor: 'rgba(74, 46, 24, 0.15)',
   },
   heroBadgeText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '800',
     color: '#7C522D',
     letterSpacing: 0.8,
   },
   heroTitle: {
-    fontSize: 38,
+    fontSize: 42,
     fontWeight: '700',
     color: '#4A2E18',
     fontFamily: 'Fraunces',
@@ -271,7 +259,7 @@ const styles = StyleSheet.create({
     letterSpacing: -0.5,
   },
   heroSubtitle: {
-    fontSize: 17,
+    fontSize: 16,
     color: '#6B4423',
     textAlign: 'center',
     lineHeight: 24,
@@ -279,110 +267,112 @@ const styles = StyleSheet.create({
     maxWidth: 600,
   },
 
-  // Cards
+  // Arched Cards
   cardRow: {
     flexDirection: 'row',
-    gap: 24,
+    gap: 28,
     paddingHorizontal: 24,
-    maxWidth: 960,
+    maxWidth: 860,
     width: '100%',
     alignSelf: 'center',
     alignItems: 'stretch',
+    justifyContent: 'center',
     flexWrap: 'wrap',
-    marginBottom: 30,
+    marginBottom: 40,
   },
   card: {
     flex: 1,
-    minWidth: 300,
-    borderRadius: 24,
-    padding: 28,
+    minWidth: 320,
+    maxWidth: 380,
+    minHeight: 460,
+    borderTopLeftRadius: 110,
+    borderTopRightRadius: 110,
+    borderBottomLeftRadius: 28,
+    borderBottomRightRadius: 28,
+    paddingVertical: 44,
+    paddingHorizontal: 28,
     justifyContent: 'space-between',
-    backgroundColor: '#FFF1E8',
+    alignItems: 'center',
+    backgroundColor: '#FFFDF7',
     borderWidth: 1,
     borderColor: 'rgba(74, 46, 24, 0.08)',
     shadowColor: '#4A2E18',
     shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.08,
-    shadowRadius: 16,
-    elevation: 4,
+    shadowOpacity: 0.05,
+    shadowRadius: 14,
+    elevation: 3,
   },
   memberCard: {
-    backgroundColor: '#FFF1E8',
+    backgroundColor: '#FFFDF7',
   },
   therapistCard: {
-    backgroundColor: '#FFF1E8',
+    backgroundColor: '#FFFDF7',
   },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  cardTopContent: {
     alignItems: 'center',
-    marginBottom: 16,
+    width: '100%',
   },
   cardIconBox: {
-    width: 46,
-    height: 46,
-    borderRadius: 14,
+    width: 54,
+    height: 54,
+    borderRadius: 27,
+    backgroundColor: '#EFE1CD',
     alignItems: 'center',
     justifyContent: 'center',
+    marginBottom: 22,
   },
   cardIcon: {
-    fontSize: 24,
-  },
-  cardAudience: {
-    fontSize: 13,
-    color: '#7C522D',
-    fontWeight: '700',
-    letterSpacing: 0.4,
-    fontStyle: 'italic',
+    fontSize: 22,
+    color: '#4A2E18',
   },
   cardTitle: {
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: '700',
     color: '#3A1F09',
     fontFamily: 'Fraunces',
-    marginBottom: 12,
+    textAlign: 'center',
+    marginBottom: 6,
   },
-  cardDesc: {
-    fontSize: 15,
-    color: '#6B4423',
-    lineHeight: 24,
-    marginBottom: 20,
+  cardSubtitle: {
+    fontSize: 13,
+    color: '#8D633D',
+    fontStyle: 'italic',
+    textAlign: 'center',
+    marginBottom: 28,
   },
   cardActions: {
     flexDirection: 'column',
-    gap: 10,
-    marginTop: 20,
+    gap: 12,
     width: '100%',
+    maxWidth: 270,
+    alignItems: 'center',
   },
   primaryBtn: {
     width: '100%',
-    backgroundColor: '#6D4330',
-    borderRadius: 14,
-    paddingVertical: 15,
+    backgroundColor: '#4A2E18',
+    borderRadius: 24,
+    paddingVertical: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#6D4330',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
+    shadowColor: '#4A2E18',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
     cursor: 'pointer',
-  },
-  providerPrimaryBtn: {
-    backgroundColor: '#5C3818',
   },
   primaryBtnText: {
     color: '#FFFDF9',
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
-    letterSpacing: 0.3,
+    letterSpacing: 0.2,
   },
   secondaryBtn: {
     width: '100%',
     paddingVertical: 12,
-    borderRadius: 14,
+    borderRadius: 24,
     borderWidth: 1.5,
-    borderColor: 'rgba(109, 67, 48, 0.25)',
-    backgroundColor: 'rgba(255, 253, 249, 0.75)',
+    borderColor: '#4A2E18',
+    backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
     cursor: 'pointer',
@@ -390,10 +380,6 @@ const styles = StyleSheet.create({
   secondaryBtnText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#5C3818',
-  },
-  actionSpacer: {
-    width: '100%',
-    height: 44,
+    color: '#4A2E18',
   },
 });
