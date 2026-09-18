@@ -62,5 +62,5 @@ def process_text_entry(user_id: str, transcript: str) -> dict:
     )
     entry["is_flagged"] = is_flagged
     entry["show_crisis_resources"] = is_flagged
-    entry["is_stressor"] = bool(prediction.get("is_stressor", stress_score >= 0.45) or is_flagged)
+    entry["is_stressor"] = bool(prediction.get("is_stressor") or stress_score >= 0.45 or is_flagged)
     return entry

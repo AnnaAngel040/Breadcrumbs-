@@ -24,7 +24,21 @@ import urllib.error
 logger = logging.getLogger(__name__)
 
 MODEL_API_URL = os.getenv("MODEL_API_URL", "http://localhost:8001/predict")
-MODEL_LOCAL_PATH = os.getenv("MODEL_LOCAL_PATH", os.path.join(os.path.dirname(__file__), "stress_model"))
+def _get_model_local_path():
+    env_path = os.getenv("MODEL_LOCAL_PATH", "")
+    if env_path and os.path.exists(env_path):
+        return env_path
+    app_dir = os.path.dirname(__file__)
+    p1 = os.path.join(app_dir, "stress_model")
+    if os.path.exists(p1):
+        return p1
+    p2 = os.path.join(os.path.dirname(app_dir), "stress_model")
+    if os.path.exists(p2):
+        return p2
+    return p1
+
+
+MODEL_LOCAL_PATH = _get_model_local_path()
 USE_MOCK_MODEL = os.getenv("USE_MOCK_MODEL", "false").lower() == "true"
 
 # Scikit-Learn Model 1 Cache
@@ -104,7 +118,7 @@ def _predict_sklearn(transcript: str, vec, clf, pipe) -> dict:
     return {
         "stress_score": round(min(1.0, max(0.0, stress_score)), 4),
         "confidence": round(min(1.0, max(0.0, confidence)), 4),
-        "is_stressor": stress_score >= 0.5,
+        "is_stressor": stress_score >= 0.40,
     }
 
 
@@ -115,23 +129,24 @@ def _get_torch_model():
         return _m1_torch_model, _m1_torch_tokenizer, _m1_torch_device
 
     _m1_torch_attempted = True
-    if not os.path.exists(MODEL_LOCAL_PATH):
+    model_path = _get_model_local_path()
+    if not os.path.exists(model_path):
         return None, None, None
 
     try:
         import torch
         from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
-        logger.info(f"Loading PyTorch Model 1 from {MODEL_LOCAL_PATH}...")
-        _m1_torch_tokenizer = AutoTokenizer.from_pretrained(MODEL_LOCAL_PATH)
-        _m1_torch_model = AutoModelForSequenceClassification.from_pretrained(MODEL_LOCAL_PATH)
+        logger.info(f"Loading PyTorch Model 1 from {model_path}...")
+        _m1_torch_tokenizer = AutoTokenizer.from_pretrained(model_path)
+        _m1_torch_model = AutoModelForSequenceClassification.from_pretrained(model_path)
         _m1_torch_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         _m1_torch_model.to(_m1_torch_device)
         _m1_torch_model.eval()
         logger.info("PyTorch Model 1 loaded successfully.")
         return _m1_torch_model, _m1_torch_tokenizer, _m1_torch_device
     except Exception as e:
-        logger.warning(f"Could not load PyTorch model from {MODEL_LOCAL_PATH}: {e}")
+        logger.warning(f"Could not load PyTorch model from {model_path}: {e}")
         return None, None, None
 
 
@@ -148,7 +163,7 @@ def _predict_torch(transcript: str, model, tokenizer, device) -> dict:
     return {
         "stress_score": round(min(1.0, max(0.0, stress_score)), 4),
         "confidence": round(min(1.0, max(0.0, confidence)), 4),
-        "is_stressor": stress_score >= 0.5,
+        "is_stressor": stress_score >= 0.40,
     }
 
 
@@ -156,18 +171,20 @@ def _heuristic_predict(transcript: str) -> dict:
     """Deterministic, keyword-informed prediction for fallback testing."""
     stress_keywords = [
         "overwhelm", "deadline", "anxious", "panic", "can't sleep", "exhausted",
-        "pressure", "cried", "rough", "struggling", "scared", "worried", "terrible",
-        "failing", "cannot afford", "argument", "fight", "alone", "hopeless"
+        "pressure", "cried", "crying", "cry", "rough", "struggling", "scared", "worried", "terrible",
+        "failing", "cannot afford", "argument", "fight", "alone", "hopeless", "breakup", "break up",
+        "evict", "evicted", "eviction", "no money", "broke", "homework", "horrible", "spiral", "fired",
+        "hate", "ruined", "stress", "stressed", "depressed", "depression", "sad", "sick", "pain"
     ]
     lowered = transcript.lower()
     matches = sum(kw in lowered for kw in stress_keywords)
     if matches > 0:
-        score = min(0.95, 0.45 + (matches * 0.15))
+        score = min(0.95, 0.55 + (matches * 0.12))
         conf = min(0.95, 0.75 + (matches * 0.05))
         is_stress = True
     else:
-        score = 0.20
-        conf = 0.80
+        score = 0.15
+        conf = 0.85
         is_stress = False
 
     return {
