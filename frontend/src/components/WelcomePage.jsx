@@ -11,8 +11,9 @@ import {
 } from 'react-native';
 import AuthModal from './AuthModal';
 
-export default function WelcomePage({ onEnterAsPatient, onEnterAsTherapist }) {
+export default function WelcomePage({ onEnterAsPatient, onEnterAsTherapist, onNavigateToFindCare }) {
   const [authVisible, setAuthVisible] = useState(false);
+
   const [authRole, setAuthRole] = useState('patient');
   const [authMode, setAuthMode] = useState('signin');
 
@@ -70,9 +71,10 @@ export default function WelcomePage({ onEnterAsPatient, onEnterAsTherapist }) {
             <TouchableOpacity onPress={() => openAuth('patient', 'signin')}>
               <Text style={styles.navLink}>Stress Insights</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => openAuth('therapist', 'signin')}>
+            <TouchableOpacity onPress={onNavigateToFindCare || (() => openAuth('patient', 'signin'))}>
               <Text style={styles.navLink}>Find Care</Text>
             </TouchableOpacity>
+
             <TouchableOpacity style={styles.signInBtn} onPress={() => openAuth('patient', 'signin')}>
               <Text style={styles.signInBtnText}>Sign In</Text>
             </TouchableOpacity>

@@ -1,4 +1,4 @@
-﻿"""
+"""
 main.py
 
 FastAPI app.  Run with:
@@ -145,13 +145,16 @@ def get_therapists(
     user_id: str,
     category: str,
     preferred_mode: str = "any",
+    gender: Optional[str] = None,
+    sliding_scale: Optional[bool] = None,
+    insurance: Optional[str] = None,
     lat: Optional[float] = None,
     lng: Optional[float] = None,
     max_distance_km: float = 50.0,
 ):
     """
     Recommends therapists for a stressor category.
-    Ranks by: specialty match -> mode -> Haversine proximity -> rating.
+    Ranks by: specialty match -> mode -> gender -> sliding scale -> insurance -> Haversine proximity -> rating.
     No booking handled here - frontend shows contact details only.
     """
     report = report_module.build_report(user_id)
@@ -160,10 +163,14 @@ def get_therapists(
         top_category=category,
         severity=severity,
         preferred_mode=preferred_mode,
+        gender=gender,
+        sliding_scale=sliding_scale,
+        insurance=insurance,
         user_lat=lat,
         user_lng=lng,
         max_distance_km=max_distance_km,
     )
+
 
 
 @app.delete("/users/{user_id}/entries")

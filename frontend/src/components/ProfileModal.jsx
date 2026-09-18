@@ -17,6 +17,7 @@ export default function ProfileModal({
   userId,
   onSelectUser,
   onOpenReport,
+  onSignOut,
   backendOnline,
 }) {
   const [customInput, setCustomInput] = useState('');
@@ -83,9 +84,9 @@ export default function ProfileModal({
           <View style={styles.currentCard}>
             <Text style={styles.label}>ACTIVE PERSONA</Text>
             <Text style={styles.currentUserId}>{userId}</Text>
-            <TouchableOpacity style={styles.reportActionBtn} onPress={onOpenReport}>
-              <Text style={styles.reportActionText}>📊 View Clinical Stress Report</Text>
-            </TouchableOpacity>
+            <View style={[styles.reportActionBtn, { backgroundColor: '#E8DCCC' }]}>
+              <Text style={[styles.reportActionText, { color: '#5C3818' }]}>🌿 Reflections are being safely recorded</Text>
+            </View>
           </View>
 
           {/* Persona Switcher */}
@@ -144,6 +145,20 @@ export default function ProfileModal({
             </TouchableOpacity>
             {deleteMessage ? <Text style={styles.deleteSuccess}>{deleteMessage}</Text> : null}
           </View>
+
+          {/* Sign Out Button */}
+          {onSignOut && (
+            <TouchableOpacity
+              style={styles.signOutModalBtn}
+              onPress={() => {
+                onClose();
+                onSignOut();
+              }}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.signOutModalBtnText}>🚪 Sign Out & Switch Account</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </SafeAreaView>
     </Modal>
@@ -351,5 +366,19 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#15803D',
     textAlign: 'center',
+  },
+  signOutModalBtn: {
+    backgroundColor: '#FAF1E6',
+    borderWidth: 1,
+    borderColor: 'rgba(92, 58, 33, 0.18)',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  signOutModalBtnText: {
+    color: '#5C3A21',
+    fontWeight: '700',
+    fontSize: 13,
   },
 });

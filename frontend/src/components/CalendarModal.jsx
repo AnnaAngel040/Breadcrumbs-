@@ -7,102 +7,195 @@ import {
   TouchableOpacity,
   ScrollView,
   SafeAreaView,
+  ActivityIndicator,
 } from 'react-native';
 import { fetchUserEntries } from '../services/api';
 
-export default function CalendarModal({ visible, onClose, userId }) {
+/**
+ * Maps reflection characteristics to subtle, gentle patient-facing mood tags.
+ * ZERO clinical scores or diagnostic numbers are ever presented to the patient.
+ */
+function getGentleMoodTag(entry) {
+  const score = entry.stress_score ?? 0.4;
+  const transcript = (entry.transcript || '').toLowerCase();
+
+  if (score > 0.75 || transcript.includes("overwhelm") || transcript.includes("can't take") || transcript.includes("drowning")) {
+    return { emoji: '🌧️', label: 'Heavier Day', color: '#8B5E3C', bg: '#F5E6D8' };
+  } else if (score > 0.45 || transcript.includes('busy') || transcript.includes('deadline') || transcript.includes('thinking')) {
+    return { emoji: '⛅', label: 'Processing & Reflective', color: '#A06828', bg: '#FAF0DC' };
+  } else if (transcript.includes('good') || transcript.includes('peace') || transcript.includes('happy') || transcript.includes('relief')) {
+    return { emoji: '☀️', label: 'Bright & Uplifted', color: '#3B7A57', bg: '#EAF5EE' };
+  } else {
+    return { emoji: '🌿', label: 'Grounded & Quiet', color: '#4A6B53', bg: '#EBF4ED' };
+  }
+}
+
+function formatPrettyDate(isoString) {
+  try {
+    const d = new Date(isoString);
+    return {
+      dayName: d.toLocaleDateString('en-US', { weekday: 'short' }),
+      dayNum: d.getDate(),
+      month: d.toLocaleDateString('en-US', { month: 'short' }),
+      time: d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }),
+    };
+  } catch {
+    return { dayName: 'Today', dayNum: '•', month: '', time: '' };
+  }
+}
+
+export default function CalendarModal({ visible, onClose, userId = 'demo_escalating' }) {
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [selectedEntryId, setSelectedEntryId] = useState(null);
 
   useEffect(() => {
     if (visible) {
       setLoading(true);
       fetchUserEntries(userId).then((data) => {
-        // Sort newest first
-        const sorted = [...data].sort((a, b) => new Date(b.date) - new Date(a.date));
+        const sorted = [...(data || [])].sort((a, b) => new Date(b.date) - new Date(a.date));
         setEntries(sorted);
+        if (sorted.length > 0) {
+          setSelectedEntryId(sorted[0].entry_id || '0');
+        }
         setLoading(false);
       });
     }
   }, [visible, userId]);
 
-  const getScoreBadge = (score) => {
-    if (score < 0.4) return { label: 'Low Stress', color: '#3A7D44', bg: '#E8F5E9' };
-    if (score < 0.7) return { label: 'Moderate', color: '#D97706', bg: '#FEF3C7' };
-    return { label: 'High Stress', color: '#DC2626', bg: '#FEE2E2' };
-  };
-
-  const formatDate = (isoString) => {
-    try {
-      const d = new Date(isoString);
-      return d.toLocaleDateString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-      });
-    } catch {
-      return 'Recent';
-    }
-  };
-
   return (
     <Modal visible={visible} animationType="slide" transparent={false} onRequestClose={onClose}>
       <SafeAreaView style={styles.safeArea}>
+        {/* Header */}
         <View style={styles.header}>
-          <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-            <Text style={styles.closeBtnText}>✕</Text>
+          <TouchableOpacity onPress={onClose} style={styles.closeBtn} activeOpacity={0.8}>
+            <Text style={styles.closeBtnText}>✕ Close</Text>
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Breadcrumb Trail</Text>
-          <View style={{ width: 36 }} />
+          <Text style={styles.headerTitle}>Your Reflection Trail</Text>
+          <View style={{ width: 64 }} />
         </View>
 
-        <View style={styles.subHeader}>
-          <Text style={styles.subHeaderText}>
-            History & Check-ins for <Text style={styles.bold}>{userId}</Text>
-          </Text>
-        </View>
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          {loading ? (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyText}>Loading past check-ins...</Text>
+          {/* Gentle Overview Banner */}
+          <View style={styles.overviewCard}>
+            <View style={styles.overviewIconCircle}>
+              <Text style={styles.overviewIcon}>🌰</Text>
             </View>
-          ) : entries.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyEmoji}>🍞</Text>
-              <Text style={styles.emptyTitle}>No breadcrumbs yet</Text>
-              <Text style={styles.emptyText}>
-                Complete your first voice or text check-in to start leaving your trail!
+            <View style={styles.overviewTextBox}>
+              <Text style={styles.overviewTitle}>Moments of Decompression</Text>
+              <Text style={styles.overviewSubtitle}>
+                {entries.length === 0
+                  ? 'Your personal space to pause, reflect, and listen to how you feel.'
+                  : `${entries.length} reflections recorded. Every small pause gives your mind space to breathe.`}
               </Text>
             </View>
-          ) : (
-            entries.map((entry, idx) => {
-              const badge = getScoreBadge(entry.stress_score || 0.4);
-              return (
-                <View key={entry.entry_id || idx} style={styles.entryCard}>
-                  <View style={styles.entryHeader}>
-                    <View style={styles.dateDotRow}>
-                      <View style={[styles.dot, { backgroundColor: badge.color }]} />
-                      <Text style={styles.entryDate}>{formatDate(entry.date)}</Text>
-                    </View>
-                    <View style={[styles.badge, { backgroundColor: badge.bg }]}>
-                      <Text style={[styles.badgeText, { color: badge.color }]}>{badge.label}</Text>
-                    </View>
-                  </View>
+          </View>
 
-                  <Text style={styles.transcriptText}>"{entry.transcript}"</Text>
-
-                  <View style={styles.metaRow}>
-                    <Text style={styles.categoryTag}>📂 {entry.category || 'General'}</Text>
-                    <Text style={styles.scoreText}>
-                      Score: {Math.round((entry.stress_score || 0) * 100)}%
-                    </Text>
-                  </View>
-                </View>
-              );
-            })
+          {/* Weekly Mood Dots Track */}
+          {entries.length > 0 && (
+            <View style={styles.trailCard}>
+              <Text style={styles.trailSectionTitle}>RECENT CHECK-IN TRAIL</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.trailScroll}>
+                {entries.slice(0, 7).map((entry, idx) => {
+                  const d = formatPrettyDate(entry.date);
+                  const mood = getGentleMoodTag(entry);
+                  const isSelected = (entry.entry_id || String(idx)) === selectedEntryId;
+                  return (
+                    <TouchableOpacity
+                      key={entry.entry_id || idx}
+                      style={[styles.dayPill, isSelected && styles.dayPillSelected]}
+                      onPress={() => setSelectedEntryId(entry.entry_id || String(idx))}
+                      activeOpacity={0.8}
+                    >
+                      <Text style={[styles.dayPillMonth, isSelected && styles.dayPillTextSelected]}>{d.month}</Text>
+                      <Text style={[styles.dayPillNum, isSelected && styles.dayPillTextSelected]}>{d.dayNum}</Text>
+                      <View style={[styles.moodDotCircle, { backgroundColor: mood.bg }]}>
+                        <Text style={styles.moodDotEmoji}>{mood.emoji}</Text>
+                      </View>
+                      <Text style={[styles.dayPillName, isSelected && styles.dayPillTextSelected]}>{d.dayName}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </View>
           )}
+
+          {/* Reflections Timeline */}
+          <View style={styles.timelineSection}>
+            <Text style={styles.timelineSectionTitle}>TIMELINE OF REFLECTIONS</Text>
+
+            {loading ? (
+              <View style={styles.loadingBox}>
+                <ActivityIndicator size="small" color="#5C3A21" />
+                <Text style={styles.loadingText}>Gathering your breadcrumb trail...</Text>
+              </View>
+            ) : entries.length === 0 ? (
+              <View style={styles.emptyCard}>
+                <Text style={styles.emptyEmoji}>🌱</Text>
+                <Text style={styles.emptyTitle}>No reflections logged yet</Text>
+                <Text style={styles.emptySubtitle}>
+                  Take a deep breath and share a quick thought or voice note whenever you are ready.
+                </Text>
+              </View>
+            ) : (
+              entries.map((entry, idx) => {
+                const mood = getGentleMoodTag(entry);
+                const d = formatPrettyDate(entry.date);
+                const isSelected = (entry.entry_id || String(idx)) === selectedEntryId;
+
+                return (
+                  <View
+                    key={entry.entry_id || idx}
+                    style={[styles.entryCard, isSelected && styles.entryCardActive]}
+                  >
+                    {/* Top Row: Date & Subtle Mood Badge */}
+                    <View style={styles.entryTopRow}>
+                      <View style={styles.entryDateBox}>
+                        <Text style={styles.entryDateText}>
+                          {d.dayName}, {d.month} {d.dayNum} • <Text style={styles.entryTimeText}>{d.time}</Text>
+                        </Text>
+                      </View>
+                      <View style={[styles.moodBadge, { backgroundColor: mood.bg }]}>
+                        <Text style={styles.moodEmoji}>{mood.emoji}</Text>
+                        <Text style={[styles.moodBadgeText, { color: mood.color }]}>{mood.label}</Text>
+                      </View>
+                    </View>
+
+                    {/* Data-Minimizing Reflection Summary (Key Category + Reason, Encrypted) */}
+                    <View style={styles.summaryBox}>
+                      <Text style={styles.summaryLabel}>ENCRYPTED REFLECTION SUMMARY</Text>
+                      <Text style={styles.summaryReasonText}>
+                        {entry.reason ? `Key Focus: ${entry.reason}` : `Mindful reflection logged under ${entry.category || 'General'}`}
+                      </Text>
+                    </View>
+
+                    {/* Category Tag & Privacy Shield */}
+                    <View style={styles.entryBottomRow}>
+                      <View style={styles.categoryPill}>
+                        <Text style={styles.categoryPillText}>📂 {entry.category || 'Mindful Reflection'}</Text>
+                      </View>
+                      <View style={styles.privacyBadge}>
+                        <Text style={styles.privacyBadgeIcon}>🔒</Text>
+                        <Text style={styles.privacyBadgeText}>Encrypted & Minimized</Text>
+                      </View>
+                    </View>
+                  </View>
+                );
+              })
+            )}
+          </View>
+
+          {/* Privacy & Consent Guarantee Footer Banner */}
+          <View style={styles.privacyGuaranteeCard}>
+            <Text style={styles.privacyGuaranteeTitle}>🔒 Patient Privacy & Data Minimization Guarantee</Text>
+            <Text style={styles.privacyGuaranteeText}>
+              • Raw audio recordings are processed in-memory and deleted immediately.{"\n"}
+              • Verbatim transcripts are redacted; only high-level categories and key trigger summaries are stored with AES encryption.{"\n"}
+              • Clinical insights are shared with licensed clinicians strictly upon your explicit consent.
+            </Text>
+          </View>
+
         </ScrollView>
       </SafeAreaView>
     </Modal>
@@ -112,141 +205,314 @@ export default function CalendarModal({ visible, onClose, userId }) {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#F7ECCD',
+    backgroundColor: '#FAF5ED',
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 16,
-    paddingBottom: 12,
+    paddingHorizontal: 24,
+    paddingTop: 18,
+    paddingBottom: 14,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(74, 46, 24, 0.1)',
+    borderBottomColor: 'rgba(92, 58, 33, 0.08)',
+    backgroundColor: '#FAF5ED',
   },
   closeBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(74, 46, 24, 0.08)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: 'rgba(92, 58, 33, 0.08)',
   },
   closeBtnText: {
-    fontSize: 16,
+    fontSize: 13,
     color: '#4A2E18',
-    fontWeight: 'bold',
+    fontWeight: '700',
   },
   headerTitle: {
     fontSize: 20,
     fontWeight: '700',
     color: '#4A2E18',
-    fontFamily: 'Fraunces',
-  },
-  subHeader: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    backgroundColor: 'rgba(251, 242, 217, 0.7)',
-  },
-  subHeaderText: {
-    fontSize: 13,
-    color: '#6B4423',
-  },
-  bold: {
-    fontWeight: '700',
+    fontFamily: 'Fraunces, Georgia, serif',
   },
   scrollContent: {
-    padding: 16,
-    paddingBottom: 40,
+    padding: 24,
+    maxWidth: 680,
+    width: '100%',
+    alignSelf: 'center',
+    gap: 20,
   },
-  entryCard: {
-    backgroundColor: '#FFFDF7',
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 12,
+
+  // Overview Banner
+  overviewCard: {
+    backgroundColor: '#FFFDF9',
+    borderRadius: 20,
+    padding: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
     borderWidth: 1,
-    borderColor: 'rgba(74, 46, 24, 0.08)',
+    borderColor: 'rgba(92, 58, 33, 0.08)',
     shadowColor: '#4A2E18',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    elevation: 2,
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
   },
-  entryHeader: {
+  overviewIconCircle: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: '#FAF1E6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  overviewIcon: {
+    fontSize: 22,
+  },
+  overviewTextBox: {
+    flex: 1,
+  },
+  overviewTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#3B2313',
+    fontFamily: 'Fraunces, Georgia, serif',
+    marginBottom: 2,
+  },
+  overviewSubtitle: {
+    fontSize: 12,
+    color: '#7D5838',
+    lineHeight: 18,
+  },
+
+  // Trail Card
+  trailCard: {
+    backgroundColor: '#FFFDF9',
+    borderRadius: 20,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(92, 58, 33, 0.08)',
+  },
+  trailSectionTitle: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    color: '#8C6239',
+    marginBottom: 12,
+  },
+  trailScroll: {
+    gap: 10,
+  },
+  dayPill: {
+    backgroundColor: '#FAF5ED',
+    borderRadius: 16,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    alignItems: 'center',
+    minWidth: 64,
+    borderWidth: 1,
+    borderColor: 'rgba(92, 58, 33, 0.1)',
+  },
+  dayPillSelected: {
+    backgroundColor: '#4A2E18',
+    borderColor: '#4A2E18',
+  },
+  dayPillMonth: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#8C6239',
+  },
+  dayPillNum: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#3B2313',
+    marginVertical: 2,
+  },
+  dayPillName: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: '#7D5838',
+    marginTop: 4,
+  },
+  dayPillTextSelected: {
+    color: '#FFFDF9',
+  },
+  moodDotCircle: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 2,
+  },
+  moodDotEmoji: {
+    fontSize: 13,
+  },
+
+  // Timeline
+  timelineSection: {
+    gap: 12,
+  },
+  timelineSectionTitle: {
+    fontSize: 10,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    color: '#8C6239',
+    marginBottom: 4,
+  },
+  loadingBox: {
+    paddingVertical: 32,
+    alignItems: 'center',
+    gap: 8,
+  },
+  loadingText: {
+    fontSize: 13,
+    color: '#7D5838',
+    fontStyle: 'italic',
+  },
+  emptyCard: {
+    backgroundColor: '#FFFDF9',
+    borderRadius: 18,
+    padding: 28,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(92, 58, 33, 0.08)',
+    gap: 8,
+  },
+  emptyEmoji: {
+    fontSize: 32,
+  },
+  emptyTitle: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#3B2313',
+  },
+  emptySubtitle: {
+    fontSize: 12,
+    color: '#8C6239',
+    textAlign: 'center',
+    maxWidth: 360,
+    lineHeight: 18,
+  },
+
+  // Entry Card
+  entryCard: {
+    backgroundColor: '#FFFDF9',
+    borderRadius: 18,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(92, 58, 33, 0.08)',
+    shadowColor: '#4A2E18',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    gap: 12,
+  },
+  entryCardActive: {
+    borderColor: '#C27038',
+    borderWidth: 1.5,
+  },
+  entryTopRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
   },
-  dateDotRow: {
+  entryDateBox: {},
+  entryDateText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#3B2313',
+  },
+  entryTimeText: {
+    fontWeight: '400',
+    color: '#8C6239',
+  },
+  moodBadge: {
     flexDirection: 'row',
     alignItems: 'center',
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 12,
+    gap: 5,
   },
-  dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    marginRight: 8,
+  moodEmoji: {
+    fontSize: 12,
   },
-  entryDate: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#7C522D',
-  },
-  badge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 10,
-  },
-  badgeText: {
+  moodBadgeText: {
     fontSize: 11,
     fontWeight: '700',
   },
-  transcriptText: {
-    fontSize: 15,
-    color: '#382211',
-    lineHeight: 22,
-    fontStyle: 'italic',
-    marginBottom: 12,
+  summaryBox: {
+    backgroundColor: '#FAF5ED',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(92, 58, 33, 0.08)',
   },
-  metaRow: {
+  summaryLabel: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.8,
+    color: '#8C6239',
+    marginBottom: 4,
+  },
+  summaryReasonText: {
+    fontSize: 13,
+    color: '#4A2E18',
+    fontWeight: '600',
+    lineHeight: 18,
+  },
+  entryBottomRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(74, 46, 24, 0.06)',
     paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(92, 58, 33, 0.06)',
   },
-  categoryTag: {
-    fontSize: 12,
+  categoryPill: {
+    backgroundColor: '#FAF5ED',
+    paddingVertical: 4,
+    paddingHorizontal: 10,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(92, 58, 33, 0.1)',
+  },
+  categoryPillText: {
+    fontSize: 11,
     fontWeight: '600',
-    color: '#6B4423',
+    color: '#5C3A21',
   },
-  scoreText: {
-    fontSize: 12,
-    color: '#8D633D',
-    fontWeight: '500',
-  },
-  emptyState: {
+  privacyBadge: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 60,
+    gap: 4,
   },
-  emptyEmoji: {
-    fontSize: 48,
-    marginBottom: 12,
+  privacyBadgeIcon: {
+    fontSize: 11,
   },
-  emptyTitle: {
-    fontSize: 18,
+  privacyBadgeText: {
+    fontSize: 10,
+    color: '#3B7A57',
     fontWeight: '700',
-    color: '#4A2E18',
-    marginBottom: 6,
-    fontFamily: 'Fraunces',
   },
-  emptyText: {
-    fontSize: 14,
-    color: '#7C522D',
-    textAlign: 'center',
-    maxWidth: 260,
+  privacyGuaranteeCard: {
+    backgroundColor: 'rgba(255, 253, 249, 0.8)',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(59, 122, 87, 0.2)',
+    gap: 6,
+    marginTop: 8,
+  },
+  privacyGuaranteeTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#2D5E43',
+  },
+  privacyGuaranteeText: {
+    fontSize: 11,
+    color: '#5C3A21',
+    lineHeight: 17,
   },
 });

@@ -75,6 +75,19 @@ class TherapistOut(BaseModel):
     distance_km: Optional[float] = None
     match_score: Optional[float] = None
     rating: Optional[float] = None
+    title: Optional[str] = None
+    review_count: Optional[str] = None
+    next_available: Optional[str] = None
+    price: Optional[str] = None
+    gender: Optional[str] = None
+    insurances: list[str] = []
+    sliding_scale: bool = False
+    avatar_url: Optional[str] = None
+    match_percentage: Optional[int] = None
+    bio: Optional[str] = None
+    phone: Optional[str] = None
+    website_url: Optional[str] = None
+
 
 
 # ─── Account schemas ──────────────────────────────────────────────────────────

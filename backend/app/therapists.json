@@ -1,194 +1,482 @@
 [
   {
-    "id": "th_01",
-    "name": "Dr. Amara Chen",
-    "specialty": "Work/Career",
-    "tier": "standard",
-    "modes": ["online", "offline"],
-    "address": "450 Sutter St, San Francisco, CA 94108",
-    "city": "San Francisco",
-    "lat": 37.7895,
-    "lng": -122.4082,
-    "rating": 4.9
-  },
-  {
-    "id": "th_02",
-    "name": "Dr. James Okafor",
+    "id": "th_vance",
+    "name": "Dr. Ananya Sharma, Ph.D",
+    "title": "Licensed Clinical Psychologist (12 yrs exp)",
     "specialty": "Work/Career",
     "tier": "intensive",
-    "modes": ["online"],
-    "address": "Telehealth / Remote Consultation",
+    "modes": [
+      "online",
+      "offline"
+    ],
+    "address": "100 Feet Rd, Indiranagar, Bengaluru, Karnataka 560038",
+    "city": "Bengaluru",
+    "lat": 12.9784,
+    "lng": 77.6408,
+    "rating": 4.9,
+    "review_count": "124 mindful reviews",
+    "next_available": "Tomorrow at 2:00 PM",
+    "price": "\u20b91,500 / session",
+    "gender": "female",
+    "phone": "+91 80 5550 1422",
+    "website_url": "https://telemanas.mohfw.gov.in",
+    "insurances": [
+      "Star Health",
+      "HDFC ERGO",
+      "Self-pay / Sliding Scale"
+    ],
+    "sliding_scale": true,
+    "match_percentage": 98,
+    "bio": "Specializes in workplace burnout, somatic grounding, corporate decompression, and cognitive boundary restructuring."
+  },
+  {
+    "id": "th_thorne",
+    "name": "Dr. Rohan Mehta, LMFT",
+    "title": "Mindfulness & Stress Management Specialist (8 yrs exp)",
+    "specialty": "Work/Career",
+    "tier": "standard",
+    "modes": [
+      "online",
+      "offline"
+    ],
+    "address": "Bandra Kurla Complex, Bandra East, Mumbai 400051",
+    "city": "Mumbai",
+    "lat": 19.0667,
+    "lng": 72.8687,
+    "rating": 4.8,
+    "review_count": "89 reviews",
+    "next_available": "Thursday at 10:30 AM",
+    "price": "\u20b91,200 / session",
+    "gender": "male",
+    "phone": "+91 22 5550 1890",
+    "website_url": "https://telemanas.mohfw.gov.in",
+    "insurances": [
+      "Care Health",
+      "Out-of-pocket"
+    ],
+    "sliding_scale": true,
+    "match_percentage": 95,
+    "bio": "Certified in mindfulness-based stress reduction, circadian hygiene, and executive cognitive de-escalation."
+  },
+  {
+    "id": "th_lin",
+    "name": "Pooja Sundaram, LCSW",
+    "title": "Holistic Somatic & Anxiety Counselor (10 yrs exp)",
+    "specialty": "Work/Career",
+    "tier": "standard",
+    "modes": [
+      "online"
+    ],
+    "address": "Telehealth / Remote Consultation (Pan-India)",
     "city": "Online",
     "lat": null,
     "lng": null,
-    "rating": 4.8
+    "rating": 5.0,
+    "review_count": "96 reviews",
+    "next_available": "Friday at 4:00 PM",
+    "price": "\u20b91,000 / session (Sliding scale)",
+    "gender": "female",
+    "phone": "+91 80 5550 1961",
+    "website_url": "https://telemanas.mohfw.gov.in",
+    "insurances": [
+      "Self-pay / Student Concession"
+    ],
+    "sliding_scale": true,
+    "match_percentage": 92,
+    "bio": "Holistic somatic practitioner specializing in emotional decompression, nervous system regulation, and tension relief."
   },
   {
-    "id": "th_03",
-    "name": "Dr. Sarah Jenkins",
+    "id": "th_alex_rivera",
+    "name": "Karan Varma, LPC",
+    "title": "Burnout & Work-Life Balance Counselor (6 yrs exp)",
     "specialty": "Work/Career",
-    "tier": "intensive",
-    "modes": ["offline"],
-    "address": "2100 Webster St, San Francisco, CA 94115",
-    "city": "San Francisco",
-    "lat": 37.7901,
-    "lng": -122.4319,
-    "rating": 4.7
+    "tier": "standard",
+    "modes": [
+      "online",
+      "offline"
+    ],
+    "address": "Connaught Place, New Delhi, Delhi 110001",
+    "city": "New Delhi",
+    "lat": 28.6315,
+    "lng": 77.2167,
+    "rating": 4.9,
+    "review_count": "54 reviews",
+    "next_available": "Monday at 1:00 PM",
+    "price": "\u20b91,100 / session",
+    "gender": "male",
+    "phone": "+91 11 5550 1772",
+    "website_url": "https://telemanas.mohfw.gov.in",
+    "insurances": [
+      "HDFC ERGO",
+      "Star Health"
+    ],
+    "sliding_scale": true,
+    "match_percentage": 94,
+    "bio": "Specializes in executive functioning coaching, young professional stress, and career transition sustainability."
   },
   {
     "id": "th_04",
-    "name": "Dr. Layla Hassan",
+    "name": "Dr. Layla Hassan, Ph.D",
+    "title": "Academic Stress & Competitive Exam Counselor (9 yrs exp)",
     "specialty": "Academics",
     "tier": "standard",
-    "modes": ["online", "offline"],
-    "address": "2495 Telegraph Ave, Berkeley, CA 94704",
-    "city": "Berkeley",
-    "lat": 37.8654,
-    "lng": -122.2588,
-    "rating": 4.9
+    "modes": [
+      "online",
+      "offline"
+    ],
+    "address": "Jayanagar 4th Block, Bengaluru, Karnataka 560011",
+    "city": "Bengaluru",
+    "lat": 12.9299,
+    "lng": 77.5833,
+    "rating": 4.9,
+    "review_count": "78 reviews",
+    "next_available": "Tomorrow at 11:00 AM",
+    "price": "\u20b91,200 / session",
+    "gender": "female",
+    "phone": "+91 80 5550 1334",
+    "website_url": "https://telemanas.mohfw.gov.in",
+    "insurances": [
+      "Student ID Discount",
+      "Self-pay"
+    ],
+    "sliding_scale": true,
+    "match_percentage": 96,
+    "bio": "Focuses on academic perfectionism, thesis anxiety, competitive exam burnout, and imposter feelings."
   },
   {
     "id": "th_05",
-    "name": "Dr. Tom Whitfield",
+    "name": "Dr. Tarun Whitfield, Psy.D",
+    "title": "Cognitive Behavioral Student Counselor (14 yrs exp)",
     "specialty": "Academics",
     "tier": "intensive",
-    "modes": ["online"],
-    "address": "Telehealth Consultation",
+    "modes": [
+      "online"
+    ],
+    "address": "Telehealth Consultation (Pan-India)",
     "city": "Online",
     "lat": null,
     "lng": null,
-    "rating": 4.7
+    "rating": 4.7,
+    "review_count": "110 reviews",
+    "next_available": "Wednesday at 3:00 PM",
+    "price": "\u20b91,400 / session",
+    "gender": "male",
+    "phone": "+91 80 5550 1109",
+    "website_url": "https://telemanas.mohfw.gov.in",
+    "insurances": [
+      "Star Health",
+      "Self-pay"
+    ],
+    "sliding_scale": true,
+    "match_percentage": 93,
+    "bio": "Specializes in test anxiety, ADHD coping strategies, and higher education transition resilience."
   },
   {
     "id": "th_06",
-    "name": "Dr. Priya Nair",
+    "name": "Dr. Priya Nair, LMFT",
+    "title": "Couples & Interpersonal Dynamics Specialist (11 yrs exp)",
     "specialty": "Relationship",
     "tier": "standard",
-    "modes": ["online", "offline"],
-    "address": "580 Market St, San Francisco, CA 94104",
-    "city": "San Francisco",
-    "lat": 37.7899,
-    "lng": -122.4034,
-    "rating": 4.9
+    "modes": [
+      "online",
+      "offline"
+    ],
+    "address": "Koramangala 5th Block, Bengaluru, Karnataka 560095",
+    "city": "Bengaluru",
+    "lat": 12.9352,
+    "lng": 77.6245,
+    "rating": 4.9,
+    "review_count": "142 reviews",
+    "next_available": "Thursday at 1:00 PM",
+    "price": "\u20b91,600 / session",
+    "gender": "female",
+    "phone": "+91 80 5550 1428",
+    "website_url": "https://telemanas.mohfw.gov.in",
+    "insurances": [
+      "Self-pay / Sliding Scale"
+    ],
+    "sliding_scale": true,
+    "match_percentage": 97,
+    "bio": "Emotionally Focused Therapy (EFT) and healthy communication patterns for partnerships."
   },
   {
     "id": "th_07",
-    "name": "Dr. Marcus Webb",
+    "name": "Dr. Marcus Webb, Psy.D",
+    "title": "Attachment & Relational Healing Clinician (15 yrs exp)",
     "specialty": "Relationship",
     "tier": "intensive",
-    "modes": ["offline"],
-    "address": "345 Lorton Ave, Burlingame, CA 94010",
-    "city": "Burlingame",
-    "lat": 37.5794,
-    "lng": -122.3481,
-    "rating": 4.8
+    "modes": [
+      "offline",
+      "online"
+    ],
+    "address": "Powai, Mumbai, Maharashtra 400076",
+    "city": "Mumbai",
+    "lat": 19.1176,
+    "lng": 72.906,
+    "rating": 4.8,
+    "review_count": "94 reviews",
+    "next_available": "Friday at 10:00 AM",
+    "price": "\u20b91,800 / session",
+    "gender": "male",
+    "phone": "+91 22 5550 1943",
+    "website_url": "https://telemanas.mohfw.gov.in",
+    "insurances": [
+      "Self-pay"
+    ],
+    "sliding_scale": false,
+    "match_percentage": 91,
+    "bio": "Works with relational boundaries, conflict de-escalation, and secure attachment rebuilding."
   },
   {
     "id": "th_08",
-    "name": "Dr. Sofia Marín",
+    "name": "Dr. Sneha Mar\u00edn, LCSW",
+    "title": "Family Systems & Generational Healing (13 yrs exp)",
     "specialty": "Family",
     "tier": "standard",
-    "modes": ["online", "offline"],
-    "address": "1500 Owens St, San Francisco, CA 94158",
-    "city": "San Francisco",
-    "lat": 37.7682,
-    "lng": -122.3926,
-    "rating": 4.9
+    "modes": [
+      "online",
+      "offline"
+    ],
+    "address": "Sadashivanagar, Bengaluru, Karnataka 560080",
+    "city": "Bengaluru",
+    "lat": 13.0068,
+    "lng": 77.5813,
+    "rating": 4.9,
+    "review_count": "105 reviews",
+    "next_available": "Tomorrow at 4:30 PM",
+    "price": "\u20b91,300 / session",
+    "gender": "female",
+    "phone": "+91 80 5550 1055",
+    "website_url": "https://telemanas.mohfw.gov.in",
+    "insurances": [
+      "Star Health",
+      "Self-pay"
+    ],
+    "sliding_scale": true,
+    "match_percentage": 98,
+    "bio": "Family therapist specializing in intergenerational dynamics and healthy family boundary establishment."
   },
   {
     "id": "th_09",
-    "name": "Dr. Elena Petrova",
+    "name": "Dr. Elena Petrova, LMFT",
+    "title": "Family Conflict Resolution & Mediation (9 yrs exp)",
     "specialty": "Family",
     "tier": "intensive",
-    "modes": ["online"],
-    "address": "Telehealth Services",
+    "modes": [
+      "online"
+    ],
+    "address": "Telehealth Services (Pan-India)",
     "city": "Online",
     "lat": null,
     "lng": null,
-    "rating": 4.8
+    "rating": 4.8,
+    "review_count": "67 reviews",
+    "next_available": "Monday at 11:00 AM",
+    "price": "\u20b91,400 / session",
+    "gender": "female",
+    "phone": "+91 80 5550 1678",
+    "website_url": "https://telemanas.mohfw.gov.in",
+    "insurances": [
+      "Self-pay"
+    ],
+    "sliding_scale": true,
+    "match_percentage": 93,
+    "bio": "Supports adults navigating complex family expectations, eldercare fatigue, and personal boundaries."
   },
   {
     "id": "th_10",
-    "name": "Dr. Ines Costa",
+    "name": "Dr. Ines Costa, Psy.D",
+    "title": "Social Anxiety & Friendship Dynamics Therapist (7 yrs exp)",
     "specialty": "Friends/Social",
     "tier": "standard",
-    "modes": ["online", "offline"],
-    "address": "1390 Market St, San Francisco, CA 94102",
-    "city": "San Francisco",
-    "lat": 37.7771,
-    "lng": -122.4178,
-    "rating": 4.7
+    "modes": [
+      "online",
+      "offline"
+    ],
+    "address": "Hauz Khas, New Delhi, Delhi 110016",
+    "city": "New Delhi",
+    "lat": 28.5494,
+    "lng": 77.2001,
+    "rating": 4.7,
+    "review_count": "52 reviews",
+    "next_available": "Tuesday at 2:00 PM",
+    "price": "\u20b91,200 / session",
+    "gender": "female",
+    "phone": "+91 11 5550 1521",
+    "website_url": "https://telemanas.mohfw.gov.in",
+    "insurances": [
+      "Care Health",
+      "Self-pay"
+    ],
+    "sliding_scale": true,
+    "match_percentage": 95,
+    "bio": "Helping individuals overcome social fatigue, isolation, and rebuild authentic peer circles."
   },
   {
     "id": "th_11",
-    "name": "Dr. Daniel Kim",
+    "name": "Dr. Daniel Kim, MD / Psy.D",
+    "title": "Integrative Health & Mind-Body Resilience (16 yrs exp)",
     "specialty": "Health",
     "tier": "standard",
-    "modes": ["online", "offline"],
-    "address": "350 Parnassus Ave, San Francisco, CA 94143",
-    "city": "San Francisco",
-    "lat": 37.7631,
-    "lng": -122.4578,
-    "rating": 4.8
+    "modes": [
+      "online",
+      "offline"
+    ],
+    "address": "Lavelle Road, Bengaluru, Karnataka 560001",
+    "city": "Bengaluru",
+    "lat": 12.9719,
+    "lng": 77.5937,
+    "rating": 4.8,
+    "review_count": "118 reviews",
+    "next_available": "Thursday at 9:00 AM",
+    "price": "\u20b91,700 / session",
+    "gender": "male",
+    "phone": "+91 80 5550 1184",
+    "website_url": "https://telemanas.mohfw.gov.in",
+    "insurances": [
+      "Star Health",
+      "HDFC ERGO"
+    ],
+    "sliding_scale": true,
+    "match_percentage": 96,
+    "bio": "Somatic stress responses, chronic fatigue management, and nervous system resilience."
   },
   {
     "id": "th_12",
-    "name": "Dr. Grace Adeyemi",
+    "name": "Dr. Grace Adeyemi, Psy.D",
+    "title": "Holistic Health & Somatic Regulation (10 yrs exp)",
     "specialty": "Health",
     "tier": "intensive",
-    "modes": ["online"],
-    "address": "Telehealth / Remote",
+    "modes": [
+      "online"
+    ],
+    "address": "Telehealth Services (Pan-India)",
     "city": "Online",
     "lat": null,
     "lng": null,
-    "rating": 4.9
+    "rating": 4.9,
+    "review_count": "83 reviews",
+    "next_available": "Friday at 1:30 PM",
+    "price": "\u20b91,350 / session",
+    "gender": "female",
+    "phone": "+91 80 5550 1832",
+    "website_url": "https://telemanas.mohfw.gov.in",
+    "insurances": [
+      "Self-pay / Sliding Scale"
+    ],
+    "sliding_scale": true,
+    "match_percentage": 94,
+    "bio": "Vagus nerve pacing, sleep restoration therapy, and somatic tension processing."
   },
   {
     "id": "th_13",
-    "name": "Dr. Noah Bergström",
+    "name": "Dr. Noah Bergstr\u00f6m, LMFT",
+    "title": "Financial Anxiety & Lifestyle Stress Counselor (8 yrs exp)",
     "specialty": "Finances",
     "tier": "standard",
-    "modes": ["online", "offline"],
-    "address": "100 Montgomery St, San Francisco, CA 94104",
-    "city": "San Francisco",
-    "lat": 37.7908,
-    "lng": -122.4021,
-    "rating": 4.8
+    "modes": [
+      "online",
+      "offline"
+    ],
+    "address": "Cyber City, DLF Phase 2, Gurugram, Haryana 122002",
+    "city": "Gurugram",
+    "lat": 28.495,
+    "lng": 77.0895,
+    "rating": 4.8,
+    "review_count": "64 reviews",
+    "next_available": "Wednesday at 11:30 AM",
+    "price": "\u20b91,200 / session",
+    "gender": "male",
+    "phone": "+91 124 5550 164",
+    "website_url": "https://telemanas.mohfw.gov.in",
+    "insurances": [
+      "Self-pay / Sliding scale"
+    ],
+    "sliding_scale": true,
+    "match_percentage": 95,
+    "bio": "Addressing livelihood uncertainty, economic stress avoidance, and sustainable financial decompression."
   },
   {
     "id": "th_14",
-    "name": "Dr. Victor Morales",
+    "name": "Dr. Victor Morales, LCSW",
+    "title": "Economic Stress & Career Transition Therapy (12 yrs exp)",
     "specialty": "Finances",
     "tier": "intensive",
-    "modes": ["offline"],
-    "address": "1900 Powell St, Emeryville, CA 94608",
-    "city": "Emeryville",
-    "lat": 37.8423,
-    "lng": -122.2965,
-    "rating": 4.7
+    "modes": [
+      "offline",
+      "online"
+    ],
+    "address": "HITEC City, Hyderabad, Telangana 500081",
+    "city": "Hyderabad",
+    "lat": 17.4435,
+    "lng": 78.3772,
+    "rating": 4.7,
+    "review_count": "71 reviews",
+    "next_available": "Thursday at 3:00 PM",
+    "price": "\u20b91,300 / session",
+    "gender": "male",
+    "phone": "+91 40 5550 1719",
+    "website_url": "https://telemanas.mohfw.gov.in",
+    "insurances": [
+      "Self-pay"
+    ],
+    "sliding_scale": true,
+    "match_percentage": 92,
+    "bio": "Practical cognitive reframing and actionable decompression around economic and career transitions."
   },
   {
     "id": "th_15",
-    "name": "Dr. Robert Nakamura",
+    "name": "Dr. Robert Nakamura, Psy.D",
+    "title": "Identity, Self-Worth & Life Transitions (11 yrs exp)",
     "specialty": "Self-esteem/Identity",
     "tier": "standard",
-    "modes": ["online", "offline"],
-    "address": "1749 Buchanan St, San Francisco, CA 94115",
-    "city": "San Francisco",
-    "lat": 37.7858,
-    "lng": -122.4305,
-    "rating": 4.8
+    "modes": [
+      "online",
+      "offline"
+    ],
+    "address": "MG Road, Bengaluru, Karnataka 560001",
+    "city": "Bengaluru",
+    "lat": 12.9756,
+    "lng": 77.6066,
+    "rating": 4.8,
+    "review_count": "89 reviews",
+    "next_available": "Tomorrow at 1:00 PM",
+    "price": "\u20b91,300 / session",
+    "gender": "male",
+    "phone": "+91 80 5550 1891",
+    "website_url": "https://telemanas.mohfw.gov.in",
+    "insurances": [
+      "Self-pay / Sliding Scale"
+    ],
+    "sliding_scale": true,
+    "match_percentage": 96,
+    "bio": "Self-compassion therapy, inner critic deconstruction, and authentic self-identity navigation."
   },
   {
     "id": "th_16",
-    "name": "Dr. Hana Suzuki",
+    "name": "Dr. Hana Suzuki, LMFT",
+    "title": "Compassion-Focused Therapy & Self-Acceptance (9 yrs exp)",
     "specialty": "Self-esteem/Identity",
     "tier": "intensive",
-    "modes": ["online"],
-    "address": "Telehealth Services",
+    "modes": [
+      "online"
+    ],
+    "address": "Telehealth Consultation (Pan-India)",
     "city": "Online",
     "lat": null,
     "lng": null,
-    "rating": 4.9
+    "rating": 4.9,
+    "review_count": "97 reviews",
+    "next_available": "Monday at 10:00 AM",
+    "price": "\u20b91,400 / session",
+    "gender": "female",
+    "phone": "+91 80 5550 1974",
+    "website_url": "https://telemanas.mohfw.gov.in",
+    "insurances": [
+      "Self-pay"
+    ],
+    "sliding_scale": true,
+    "match_percentage": 97,
+    "bio": "Compassion-Focused Therapy (CFT) for chronic self-criticism, perfectionism, and self-acceptance."
   }
 ]
