@@ -1,32 +1,117 @@
 """
-matching.py  (Part 5 of the guide: Therapist Matching)
+matching.py  (Part 5: Therapist Matching & Routing)
 
-Simple lookup against a static, hardcoded directory. No ML needed here —
-that's fine to say plainly to a judge; not every part of the app needs to
-be a model.
+Matches and ranks therapists based on:
+1. Category / Specialty match (exact base category)
+2. Severity tier triage (high/flagged routes to intensive/standard care)
+3. Consultation mode compatibility (online vs. offline/in-person)
+4. Geodesic distance using the Haversine formula (for in-person visits)
+5. Multi-factor match ranking (proximity, tier match, rating)
 """
 
 import json
+import math
 import os
+from typing import Optional
 
 _THERAPISTS_PATH = os.path.join(os.path.dirname(__file__), "therapists.json")
 
-with open(_THERAPISTS_PATH, "r") as f:
+with open(_THERAPISTS_PATH, "r", encoding="utf-8") as f:
     THERAPISTS: list[dict] = json.load(f)
 
 
-def match_therapists(top_category: str, severity: str) -> list[dict]:
-    """Returns up to 3 therapists matching the category. For "high" or
-    "flagged" severity, restricts to therapists who can take standard or
-    intensive-tier cases (i.e. excludes any lighter-touch-only tiers if
-    you add them later)."""
-    # Strip any "#0"/"#1" similarity sub-thread suffix before matching,
-    # since the directory is organized by the base category.
+def haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Calculates the great-circle distance between two points on the Earth
+    in kilometers using the Haversine formula."""
+    R = 6371.0  # Earth's radius in kilometers
+    phi1 = math.radians(lat1)
+    phi2 = math.radians(lat2)
+    delta_phi = math.radians(lat2 - lat1)
+    delta_lambda = math.radians(lon2 - lon1)
+
+    a = (
+        math.sin(delta_phi / 2.0) ** 2
+        + math.cos(phi1) * math.cos(phi2) * math.sin(delta_lambda / 2.0) ** 2
+    )
+    c = 2.0 * math.atan2(math.sqrt(a), math.sqrt(1.0 - a))
+    return round(R * c, 2)
+
+
+def match_therapists(
+    top_category: str,
+    severity: str,
+    preferred_mode: str = "any",
+    user_lat: Optional[float] = None,
+    user_lng: Optional[float] = None,
+    max_distance_km: float = 50.0,
+    limit: int = 3,
+) -> list[dict]:
+    """Returns up to `limit` therapists matching the category, filtered and
+    ranked by severity tier, preferred consultation mode (online/offline/any),
+    and geographical distance.
+    """
     base_category = top_category.split("#")[0]
+    preferred_mode = (preferred_mode or "any").lower().strip()
 
-    matches = [t for t in THERAPISTS if t["specialty"] == base_category]
+    candidates = [t for t in THERAPISTS if t.get("specialty") == base_category]
 
+    # Tier filtering: For high/flagged severity, prioritize/require standard or intensive
     if severity in ("high", "flagged"):
-        matches = [t for t in matches if t["tier"] in ("standard", "intensive")]
+        candidates = [t for t in candidates if t.get("tier") in ("standard", "intensive")]
 
-    return matches[:3]
+    scored_matches = []
+    for t in candidates:
+        modes = [m.lower() for m in t.get("modes", ["online"])]
+
+        # Mode compatibility check
+        if preferred_mode == "online" and "online" not in modes:
+            continue
+        if preferred_mode == "offline" and "offline" not in modes:
+            continue
+
+        # Distance calculation
+        dist = None
+        has_coords = (
+            user_lat is not None
+            and user_lng is not None
+            and t.get("lat") is not None
+            and t.get("lng") is not None
+        )
+
+        if has_coords:
+            dist = haversine_km(user_lat, user_lng, t["lat"], t["lng"])
+            if preferred_mode == "offline" and dist > max_distance_km:
+                continue
+
+        # Ranking score computation:
+        # Base specialty match = 1.0
+        score = 1.0
+
+        # Tier bonus for high/flagged cases
+        if severity in ("high", "flagged") and t.get("tier") == "intensive":
+            score += 0.35
+
+        # Mode match bonus
+        if preferred_mode in modes:
+            score += 0.20
+
+        # Distance score
+        if dist is not None:
+            proximity_score = max(0.0, 1.0 - (dist / max_distance_km))
+            score += 0.40 * proximity_score
+        elif "online" in modes and preferred_mode in ("online", "any"):
+            score += 0.30  # Online access bonus when location is not an obstacle
+
+        # Rating factor
+        rating = t.get("rating", 4.5)
+        score += (rating / 5.0) * 0.15
+
+        res = dict(t)
+        res["distance_km"] = dist
+        res["match_score"] = round(score, 3)
+        scored_matches.append(res)
+
+    # Sort descending by match_score
+    scored_matches.sort(key=lambda m: m["match_score"], reverse=True)
+    return scored_matches[:limit]
+

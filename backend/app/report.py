@@ -12,7 +12,7 @@ from typing import Callable, Optional
 
 from app.database import get_entries_for_user
 from app.threading_logic import build_threads
-from app.trends import compute_trend
+from app.trends import compute_trend, compute_time_decay_stress
 from app.severity import severity_for_thread, overall_severity
 
 
@@ -29,6 +29,7 @@ def build_report(
             "period": period_label,
             "stressors": [],
             "overall_severity": "low",
+            "overall_decay_score": 0.0,
             "crisis_resources_shown": False,
         }
 
@@ -42,6 +43,7 @@ def build_report(
         trend = compute_trend(thread_entries)
         severity = severity_for_thread(thread_entries, trend, num_active_stressors)
         latest_score = sorted(thread_entries, key=lambda e: e["date"])[-1]["stress_score"]
+        current_decay_score = compute_time_decay_stress(thread_entries)
 
         stressor_summaries.append({
             "category": category,
@@ -49,18 +51,22 @@ def build_report(
             "severity": severity,
             "entry_count": len(thread_entries),
             "latest_score": latest_score,
+            "current_decay_score": current_decay_score,
             "active_stressor_count": num_active_stressors,
         })
         severities.append(severity)
 
     final_severity = overall_severity(severities)
+    overall_decay_score = compute_time_decay_stress(entries)
 
     return {
         "anonymous_id": user_id,
         "period": period_label,
         "stressors": stressor_summaries,
         "overall_severity": final_severity,
+        "overall_decay_score": overall_decay_score,
         # "flagged" always means crisis resources must be shown in the UI,
         # in addition to any professional-booking suggestion — not instead of it.
         "crisis_resources_shown": final_severity == "flagged",
     }
+

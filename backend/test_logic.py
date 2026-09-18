@@ -15,10 +15,12 @@ proof our thresholds behave the way we say they do."
 from datetime import datetime, timedelta, timezone
 
 from app.severity import compute_severity, severity_for_thread, overall_severity
-from app.trends import compute_trend
+from app.trends import compute_trend, compute_time_decay_stress
 from app.threading_logic import get_stressor_threads, refine_threads_with_similarity
-from app.matching import match_therapists
+from app.matching import match_therapists, haversine_km
 from app.risk_keywords import check_acute_risk_keywords
+from app.categorize import categorize, CANONICAL_CATEGORIES
+from app.sentiment_intensity import analyze_linguistic_intensity, fuse_stress_score
 
 
 def _entry(days_ago, score, category="Work/Career", transcript="normal day"):
@@ -145,3 +147,101 @@ def test_matching_strips_similarity_suffix():
     with_suffix = match_therapists("Work/Career#0", "low")
     without_suffix = match_therapists("Work/Career", "low")
     assert with_suffix == without_suffix
+
+
+# ---------- categorization (keyword fallback path — no network needed) ----------
+
+def test_categorize_always_returns_a_canonical_category():
+    # With no OPENAI_API_KEY set in this test env, categorize() must fall
+    # back to keyword matching rather than raising.
+    result = categorize("A completely generic sentence with no clear topic.")
+    assert result in CANONICAL_CATEGORIES
+
+
+def test_categorize_keyword_fallback_on_clear_examples():
+    cases = {
+        "Work/Career": "My manager keeps piling deadlines on me every meeting.",
+        "Finances": "I cannot afford rent this month and I am drowning in debt.",
+        "Family": "My mom and dad have been fighting and it stresses me out.",
+    }
+    for expected, text in cases.items():
+        assert categorize(text) == expected
+
+
+# ---------- location & mode matching (Haversine & filters) ----------
+
+def test_haversine_distance_calculation():
+    # San Francisco (37.7749, -122.4194) to Oakland (37.8044, -122.2712) ~ 13.5 km
+    dist = haversine_km(37.7749, -122.4194, 37.8044, -122.2712)
+    assert 12.0 < dist < 15.0
+
+
+def test_matching_prefers_and_filters_by_online_mode():
+    matches = match_therapists("Work/Career", "low", preferred_mode="online")
+    assert len(matches) > 0
+    for m in matches:
+        assert "online" in [x.lower() for x in m["modes"]]
+
+
+def test_matching_prefers_and_filters_by_offline_mode():
+    matches = match_therapists("Work/Career", "low", preferred_mode="offline")
+    assert len(matches) > 0
+    for m in matches:
+        assert "offline" in [x.lower() for x in m["modes"]]
+
+
+def test_matching_with_coordinates_and_distance_cutoff():
+    # User in San Francisco downtown
+    user_lat, user_lng = 37.789, -122.408
+    matches = match_therapists(
+        "Work/Career",
+        "low",
+        preferred_mode="offline",
+        user_lat=user_lat,
+        user_lng=user_lng,
+        max_distance_km=10.0,
+    )
+    assert len(matches) > 0
+    for m in matches:
+        assert m["distance_km"] is not None
+        assert m["distance_km"] <= 10.0
+        assert "match_score" in m
+
+
+# ---------- time decay stress calculations ----------
+
+def test_time_decay_stress_gives_higher_weight_to_recent_entries():
+    # User was calm (0.2) 14 days ago, but experienced severe acute stress (0.9) today
+    entries = [_entry(14, 0.2), _entry(0, 0.9)]
+    simple_average = (0.2 + 0.9) / 2.0  # 0.55
+    decay_score = compute_time_decay_stress(entries, half_life_days=7.0)
+
+    # Because the 0.9 entry is today and the 0.2 entry is 2 half-lives ago (weight 0.25),
+    # decay_score must be significantly higher than simple average
+    assert decay_score > simple_average
+    assert decay_score > 0.70
+
+
+def test_time_decay_empty_or_single_entry():
+    assert compute_time_decay_stress([]) == 0.0
+    single = [_entry(0, 0.65)]
+    assert compute_time_decay_stress(single) == 0.65
+
+
+# ---------- sentiment & linguistic intensity ----------
+
+def test_linguistic_intensity_and_fused_score():
+    stressed_text = "I am totally panicking, completely overwhelmed and terrified about this impossible deadline!"
+    calm_text = "Today was a peaceful and calm day, feeling relieved and grateful."
+
+    stressed_analysis = analyze_linguistic_intensity(stressed_text)
+    calm_analysis = analyze_linguistic_intensity(calm_text)
+
+    assert stressed_analysis["sentiment_stress_score"] > calm_analysis["sentiment_stress_score"]
+    assert stressed_analysis["arousal"] > calm_analysis["arousal"]
+    assert stressed_analysis["absolutist_density"] > 0.0
+
+    fused = fuse_stress_score(0.5, stressed_text, model_weight=0.7)
+    assert "fused_stress_score" in fused
+    assert fused["fused_stress_score"] >= 0.5
+

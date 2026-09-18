@@ -33,6 +33,7 @@ class ThreadOut(BaseModel):
     severity: str
     entry_count: int
     latest_score: float
+    current_decay_score: Optional[float] = None
     active_stressor_count: int
 
 
@@ -41,10 +42,21 @@ class ReportOut(BaseModel):
     period: str
     stressors: list[ThreadOut]
     overall_severity: str
+    overall_decay_score: Optional[float] = None
     crisis_resources_shown: bool
 
 
 class TherapistOut(BaseModel):
+    id: Optional[str] = None
     name: str
     specialty: str
     tier: str
+    modes: list[str] = ["online"]
+    address: Optional[str] = None
+    city: Optional[str] = None
+    lat: Optional[float] = None
+    lng: Optional[float] = None
+    distance_km: Optional[float] = None
+    match_score: Optional[float] = None
+    rating: Optional[float] = None
+

@@ -6,6 +6,10 @@ regression — interpretable, easy to defend to a judge, and sufficient to
 demonstrate the trend-tracking concept in a 28-hour build.
 """
 
+import math
+from datetime import datetime, timezone
+from typing import Optional
+
 ESCALATING_THRESHOLD = 0.15
 IMPROVING_THRESHOLD = -0.15
 
@@ -58,3 +62,53 @@ def compute_trend_slope(thread_entries: list[dict]) -> float:
     denominator = sum((x - x_mean) ** 2 for x in xs)
 
     return numerator / denominator if denominator else 0.0
+
+
+def compute_time_decay_stress(
+    thread_entries: list[dict],
+    half_life_days: float = 7.0,
+    reference_time: Optional[datetime] = None,
+) -> float:
+    """Computes an exponential time-decayed weighted average of stress scores.
+
+    Formula:
+        lambda = ln(2) / half_life_days
+        w_i = exp(-lambda * delta_days_i)
+        S_decay = sum(w_i * S_i) / sum(w_i)
+
+    An entry logged today has weight 1.0; an entry logged `half_life_days` ago
+    carries weight 0.5; an entry logged 2 * half_life_days ago carries weight 0.25.
+    This provides a continuous, recency-sensitive estimate of active stress state.
+    """
+    if not thread_entries:
+        return 0.0
+
+    ref = reference_time or datetime.now(timezone.utc)
+    if ref.tzinfo is None:
+        ref = ref.replace(tzinfo=timezone.utc)
+
+    decay_lambda = math.log(2.0) / max(0.1, half_life_days)
+    weighted_sum = 0.0
+    total_weights = 0.0
+
+    for e in thread_entries:
+        raw_date = e.get("date", "")
+        try:
+            dt = datetime.fromisoformat(str(raw_date).replace("Z", "+00:00"))
+            if dt.tzinfo is None:
+                dt = dt.replace(tzinfo=timezone.utc)
+        except Exception:
+            dt = ref
+
+        elapsed_days = max(0.0, (ref - dt).total_seconds() / 86400.0)
+        weight = math.exp(-decay_lambda * elapsed_days)
+        score = float(e.get("stress_score", 0.0))
+
+        weighted_sum += weight * score
+        total_weights += weight
+
+    if total_weights <= 0.0:
+        return round(float(thread_entries[-1].get("stress_score", 0.0)), 3)
+
+    return round(weighted_sum / total_weights, 3)
+

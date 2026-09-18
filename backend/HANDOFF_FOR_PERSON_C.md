@@ -1,110 +1,144 @@
-# Backend API — Handoff for Frontend
+﻿# Backend API — Handoff for Person C (Frontend & NLP Specialist)
 
-Base URL (local dev): `http://127.0.0.1:8000`
-Interactive docs: `http://127.0.0.1:8000/docs` — try every call by hand here first.
+Base URL (local dev): `http://127.0.0.1:8000`  
+Interactive Swagger Docs: `http://127.0.0.1:8000/docs`
 
-Backend is live right now on mock data (no real model or Whisper key needed
-yet), so you can build against it immediately.
+---
 
-## Fastest way to get data flowing while you build
+## 1. Fast Development: Mock Mode & Seed Demo Data
 
-Use `POST /entries/text` instead of the audio endpoint during development —
-same response shape, no need to record/upload real audio while you're
-wiring up UI:
+The backend runs out-of-the-box with zero external dependencies (mock transcription and mock stress model active by default).
 
+To populate realistic demo data across all three clinical states, run:
+```bash
+python seed_demo_data.py
 ```
-POST /entries/text
-Content-Type: application/json
+This seeds three test users:
+| User ID | Clinical State | Expected Frontend Presentation |
+| :--- | :--- | :--- |
+| `demo_escalating` | Multi-week worsening stress | High severity banner, escalating trajectory |
+| `demo_improving` | Recovery trend | Low severity badge, downward stress curve |
+| `demo_flagged` | Acute crisis keywords | **Immediate mandatory Crisis Hotlines modal** |
 
-{"user_id": "demo1", "transcript": "Work has been really overwhelming lately."}
+---
+
+## 2. Endpoints You Will Call
+
+### 1. Submit an Audio or Text Diary Entry
+```http
+POST /entries/audio    (multipart/form-data: user_id [text], audio [file])
+POST /entries/text     (application/json: {"user_id": "u123", "transcript": "text"})
 ```
-
-Or just run `python seed_demo_data.py` from the backend folder — it inserts
-three ready-made demo users you can point the UI at immediately:
-
-| user_id | what it demos |
-|---|---|
-| `demo_escalating` | multi-week worsening trend, ends at severity `"high"` |
-| `demo_improving` | trend easing off, stays at `"low"` |
-| `demo_flagged` | crisis-keyword path — `overall_severity: "flagged"`, `crisis_resources_shown: true` |
-
-## Endpoints you'll actually call
-
-### Submit an entry
-```
-POST /entries/audio       multipart: user_id (text field) + audio (file)
-POST /entries/text        json: {user_id, transcript}
-```
-Both return the same shape:
+**Response (`EntryOut`)**:
 ```json
 {
-  "entry_id": "uuid",
-  "user_id": "demo1",
-  "date": "2026-09-18T04:32:00+00:00",
-  "transcript": "...",
+  "entry_id": "c71a3617-640a-42c2-bfa1-e5d0d8858348",
+  "user_id": "u123",
+  "date": "2026-09-18T06:20:00+00:00",
+  "transcript": "Work deadlines are piling up and I feel overwhelmed.",
   "category": "Work/Career",
-  "stress_score": 0.71,
-  "confidence": 0.85,
+  "stress_score": 0.78,
+  "confidence": 0.89,
   "similarity_group_id": null
 }
 ```
 
-### Get threads (for a trend view per stressor)
-```
+---
+
+### 2. Get Threads (For Stressor Cards & Trend Sparklines)
+```http
 GET /users/{user_id}/threads
 ```
+**Response (`list[ThreadOut]`)**:
 ```json
 [
   {
     "category": "Work/Career",
-    "trend": "escalating",        // "escalating" | "stable" | "improving" | "insufficient_data"
-    "severity": "high",           // "low" | "moderate" | "high" | "flagged"
-    "entry_count": 5,
+    "trend": "escalating",
+    "severity": "high",
+    "entry_count": 8,
     "latest_score": 0.83,
+    "current_decay_score": 0.724,
     "active_stressor_count": 3
   }
 ]
 ```
+- `latest_score`: Most recent single diary check-in score ($0.0 - 1.0$).
+- `current_decay_score`: **Smoothed, time-decayed stress level** (7-day half-life exponential moving average). Use this for smoothed gauge meters!
+- `trend`: `"escalating"`, `"improving"`, `"stable"`, or `"insufficient_data"`.
 
-### Get the full report (main dashboard view)
+---
+
+### 3. Get Full Anonymized Clinical Report (Main Dashboard View)
+```http
+GET /users/{user_id}/report?period=last%2014%20days
 ```
-GET /users/{user_id}/report
-```
+**Response (`ReportOut`)**:
 ```json
 {
-  "anonymous_id": "demo1",
+  "anonymous_id": "u123",
   "period": "last 14 days",
-  "stressors": [ /* same shape as threads above */ ],
+  "stressors": [ ... ],
   "overall_severity": "high",
+  "overall_decay_score": 0.685,
   "crisis_resources_shown": false
 }
 ```
 
-**UI requirement, not optional:** whenever `crisis_resources_shown` is
-`true`, the frontend must surface crisis-line resources immediately and
-prominently — in addition to any therapist-booking UI, never instead of it.
-This should not depend on the user scrolling or clicking into anything.
+> ⚠️ **MANDATORY UI REQUIREMENT**:  
+> Whenever `crisis_resources_shown` is `true` (triggered when `overall_severity == "flagged"`), the UI **must display crisis line resources immediately and prominently** (e.g., 988 Suicide & Crisis Lifeline, Crisis Text Line). It must not require user scrolling or clicking into sub-menus.
 
-### Get matched therapists
+---
+
+### 4. Get Matched Therapists (Location & Mode Aware)
+```http
+GET /users/{user_id}/therapists/{category}?preferred_mode=offline&lat=37.789&lng=-122.408&max_distance_km=25
 ```
-GET /users/{user_id}/therapists/{category}
-```
-`category` should be one of the 8 taxonomy categories (exact string match —
-confirm final spelling with Person A/B once locked). Returns up to 3:
+
+#### Query Parameters:
+- `category`: Base category name (e.g. `Work/Career`, `Academics`, `Family`, `Finances`, etc.).
+- `preferred_mode` (optional): `"any"` (default), `"online"`, or `"offline"`.
+- `lat`, `lng` (optional): User coordinates (from browser navigator geolocation).
+- `max_distance_km` (optional): Maximum travel radius for offline visits (default: `50.0`).
+
+**Response (`list[TherapistOut]`)**:
 ```json
 [
-  {"name": "Dr. Sofia Marín", "specialty": "Family", "tier": "standard"}
+  {
+    "id": "th_01",
+    "name": "Dr. Amara Chen",
+    "specialty": "Work/Career",
+    "tier": "standard",
+    "modes": ["online", "offline"],
+    "address": "450 Sutter St, San Francisco, CA 94108",
+    "city": "San Francisco",
+    "lat": 37.7895,
+    "lng": -122.4082,
+    "rating": 4.9,
+    "distance_km": 1.07,
+    "match_score": 1.738
+  }
 ]
 ```
+- `distance_km`: Geodesic distance computed via the Haversine formula (null for telehealth-only).
+- `match_score`: Composite ranking score incorporating specialty, tier suitability, mode match, proximity, and clinician rating.
 
-## Things worth building UI for now, even before the real model is live
+---
 
-- A per-category trend view (line/sparkline of `stress_score` over time) — data is already there via `/threads`
-- A severity-aware banner: different treatment for `low` / `moderate` / `high` / `flagged`
-- The crisis-resources surface for `flagged` — this is a judged, ethically-central part of the app, worth getting the UI polish right early rather than bolting on late
-- Therapist match cards driven by `/users/{user_id}/therapists/{category}`
+## 3. Integrating Person C's Semantic Similarity Function
 
-## What will change later (don't hardcode around these)
+Person B's threading engine supports semantic clustering to split broad categories into fine-grained sub-issues (e.g. separating `"organic chemistry midterm"` from `"thesis proposal"` within `Academics`).
 
-- Category strings may shift slightly once Person A's real taxonomy is locked — don't hardcode a category list in the frontend; always render whatever `category` string the API returns.
-- `similarity_group_id` may start appearing on entries once Person C's similarity model is integrated (hour 9-10) — thread `category` keys may also start looking like `"Work/Career#0"` / `"Work/Career#1"` at that point if a category gets split into sub-threads. Frontend should treat these as opaque thread identifiers, not assume category is always a clean top-level name.
+### Your Required Function Signature:
+```python
+def is_same_stressor(text_a: str, text_b: str) -> float:
+    """Takes two diary transcripts and returns cosine similarity in [0.0, 1.0].
+    Threshold >= 0.70 groups entries into the same sub-thread.
+    """
+    ...
+```
+
+### Where to Plug It In:
+Deliver this function in a Python module (or provide an endpoint). Person B has hook points already built and tested:
+1. `app/main.py`: In `list_threads(user_id)` $\rightarrow$ `build_threads(entries, similarity_fn=is_same_stressor)`
+2. `app/report.py`: In `build_report(user_id)` $\rightarrow$ `build_threads(entries, similarity_fn=is_same_stressor)`

@@ -24,9 +24,11 @@ load_dotenv()
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
+from typing import Optional
+
 from app import database, pipeline, report as report_module
 from app.threading_logic import build_threads
-from app.trends import compute_trend
+from app.trends import compute_trend, compute_time_decay_stress
 from app.severity import severity_for_thread
 from app.matching import match_therapists
 from app.schemas import EntryOut, ThreadOut, ReportOut, TherapistOut, TextEntryIn
@@ -99,12 +101,14 @@ def list_threads(user_id: str):
         trend = compute_trend(thread_entries)
         severity = severity_for_thread(thread_entries, trend, num_active_stressors)
         latest_score = sorted(thread_entries, key=lambda e: e["date"])[-1]["stress_score"]
+        current_decay_score = compute_time_decay_stress(thread_entries)
         out.append({
             "category": category,
             "trend": trend,
             "severity": severity,
             "entry_count": len(thread_entries),
             "latest_score": latest_score,
+            "current_decay_score": current_decay_score,
             "active_stressor_count": num_active_stressors,
         })
     return out
@@ -116,10 +120,28 @@ def get_report(user_id: str, period: str = "last 14 days"):
 
 
 @app.get("/users/{user_id}/therapists/{category}", response_model=list[TherapistOut])
-def get_therapists(user_id: str, category: str):
+def get_therapists(
+    user_id: str,
+    category: str,
+    preferred_mode: str = "any",
+    lat: Optional[float] = None,
+    lng: Optional[float] = None,
+    max_distance_km: float = 50.0,
+):
+    """Returns matched therapists for a stressor category.
+    Takes into account user severity, consultation mode (online, offline, any),
+    and user coordinates (lat, lng) to filter by radius and rank by proximity.
+    """
     report = report_module.build_report(user_id)
     severity = report["overall_severity"]
-    return match_therapists(category, severity)
+    return match_therapists(
+        top_category=category,
+        severity=severity,
+        preferred_mode=preferred_mode,
+        user_lat=lat,
+        user_lng=lng,
+        max_distance_km=max_distance_km,
+    )
 
 
 @app.delete("/users/{user_id}/entries")

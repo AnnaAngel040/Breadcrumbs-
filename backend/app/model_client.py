@@ -7,11 +7,15 @@ test your whole pipeline against the mock, then flip USE_MOCK_MODEL=false
 in .env the moment A's endpoint is live. Nothing else in the pipeline needs
 to change; get_stress_prediction() is the only seam.
 
-CONTRACT WITH PERSON A (lock this down in writing before either of you
-builds much):
+CONTRACT WITH PERSON A (locked, per their Dreaddit exploration findings):
+A's DistilBERT is BINARY stress classification only — no category. Dreaddit
+doesn't have labeled data covering the full taxonomy (no Work/Career or
+Academics subreddits), so A's model intentionally does NOT output a topic;
+that's now handled separately by app/categorize.py.
+
     POST {MODEL_API_URL}
     body:     {"transcript": "<text>"}
-    response: {"stress_score": float 0-1, "category": str, "confidence": float 0-1}
+    response: {"stress_score": float 0-1, "confidence": float 0-1}
 
 If A's field names differ (e.g. stressScore vs stress_score), fix it in
 ONE place: the `_normalize()` function below, not scattered through the
@@ -25,26 +29,12 @@ import requests
 MODEL_API_URL = os.getenv("MODEL_API_URL", "http://localhost:8001/predict")
 USE_MOCK_MODEL = os.getenv("USE_MOCK_MODEL", "true").lower() == "true"
 
-# Must match whatever 8-category taxonomy Person A's model actually outputs.
-# Placeholder set — swap for the real list the moment A shares it.
-CATEGORIES = [
-    "Work/Career",
-    "Relationship",
-    "Family",
-    "Health",
-    "Finances",
-    "Academic",
-    "Social",
-    "Other",
-]
-
 
 def _normalize(raw: dict) -> dict:
     """Map whatever keys A's API actually returns onto our canonical shape.
     Edit this if their JSON keys differ from the agreed contract."""
     return {
         "stress_score": float(raw["stress_score"]),
-        "category": str(raw["category"]),
         "confidence": float(raw["confidence"]),
     }
 
@@ -59,13 +49,13 @@ def _mock_predict(transcript: str) -> dict:
     score = min(0.95, base + random.uniform(-0.05, 0.05))
     return {
         "stress_score": round(score, 3),
-        "category": random.choice(CATEGORIES),
         "confidence": round(random.uniform(0.6, 0.95), 3),
     }
 
 
 def get_stress_prediction(transcript: str) -> dict:
-    """Returns {"stress_score": float, "category": str, "confidence": float}."""
+    """Returns {"stress_score": float, "confidence": float}. No category —
+    see module docstring for why that's now a separate layer."""
     if USE_MOCK_MODEL:
         return _mock_predict(transcript)
 

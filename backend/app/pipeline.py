@@ -13,9 +13,10 @@ FastAPI at all.
 
 import os
 
-from app import transcription, model_client, database
+from app import transcription, model_client, categorize, database
 
 USE_MOCK_TRANSCRIPTION = os.getenv("USE_MOCK_TRANSCRIPTION", "true").lower() == "true"
+ENABLE_SENTIMENT_FUSION = os.getenv("ENABLE_SENTIMENT_FUSION", "false").lower() == "true"
 
 
 def process_audio_entry(user_id: str, audio_file_path: str) -> dict:
@@ -31,12 +32,19 @@ def process_text_entry(user_id: str, transcript: str) -> dict:
     """Skips transcription — used for the text-entry testing route, and
     internally by process_audio_entry() once it has a transcript."""
     prediction = model_client.get_stress_prediction(transcript)
+    category = categorize.categorize(transcript)
+
+    stress_score = prediction["stress_score"]
+    if ENABLE_SENTIMENT_FUSION:
+        from app.sentiment_intensity import fuse_stress_score
+        fused = fuse_stress_score(stress_score, transcript)
+        stress_score = fused["fused_stress_score"]
 
     entry = database.insert_entry(
         user_id=user_id,
         transcript=transcript,
-        category=prediction["category"],
-        stress_score=prediction["stress_score"],
+        category=category,
+        stress_score=stress_score,
         confidence=prediction["confidence"],
     )
     return entry

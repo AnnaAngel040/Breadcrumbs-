@@ -58,6 +58,7 @@ moment the real thing is ready; nothing else in the code changes.
 | GET | `/users/{user_id}/report` | Full anonymized report (Part 6) |
 | GET | `/users/{user_id}/therapists/{category}` | Matched therapists for a category, respecting current overall severity |
 | DELETE | `/users/{user_id}/entries` | Right-to-delete: permanently removes all data for a user (404 if none exists) |
+| GET | `/users/{user_id}/therapists-real/{category}` | Optional real-therapist search (Google Places + review-based specialty tags), falls back to the static directory automatically. Pass `?lat=..&lng=..` for real results. |
 | GET | `/admin/users` | Debug helper — lists all user_ids with data. Not for production without auth. |
 | GET | `/health` | Liveness check |
 
@@ -119,6 +120,41 @@ similarity-refined), and therapist matching — including the empty-category
 and similarity-suffix-stripping edge cases. These are pure logic tests, no
 DB or server needed, so they run in milliseconds. Worth having open on a
 second screen during judging as proof the thresholds behave as claimed.
+
+## Topic categorization (app/categorize.py)
+
+Separate from Person A's model on purpose — Dreaddit doesn't have labeled
+data covering Work/Career or Academics, so A's DistilBERT does binary
+stress classification only. This module answers "about what" as its own
+layer: tries an LLM call first (`USE_LLM_CATEGORIZATION=true`, needs
+`OPENAI_API_KEY`), falls back automatically to keyword matching on any
+failure — network issues, missing key, malformed response — so the demo
+never hard-fails on this. `CANONICAL_CATEGORIES` in this file is now the
+single source of truth for the 8-category taxonomy; `therapists.json` is
+kept in sync with it.
+
+## Domain-shift validation (domain_shift_validation.py)
+
+Dreaddit is written Reddit text; real input here is transcribed speech —
+different register entirely. This script has 20 hand-labeled "spoken diary
+style" statements (10 stressed, 10 not) to run against Person A's model
+once it's trained, to check whether Reddit-trained performance actually
+holds up on speech-like text. Run with `python domain_shift_validation.py`
+once `USE_MOCK_MODEL=false` and `MODEL_API_URL` point at A's real endpoint.
+
+## Optional: real therapist search (app/real_therapist_matching.py)
+
+An opt-in layer over the static directory: looks up real nearby therapists
+via Google Places, infers specialty tags (trauma, DV, etc.) from their
+reviews via an LLM call, ranks by tag match + rating. **Off by default**
+(`USE_REAL_THERAPIST_SEARCH=false`) and falls back to the static directory
+automatically on any failure — missing API key, network error, bad
+response. Needs a billed Google Cloud API key you set up yourself; this
+was built but not tested against a live Google API in this environment
+(no network path available), so test it against your own key before
+relying on it for a demo. See the module docstring for full setup steps
+and the reasoning behind keeping this separate from the static directory
+rather than replacing it.
 
 ## A note on `severity.py` / `risk_keywords.py`
 
