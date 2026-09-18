@@ -9,11 +9,10 @@ import {
   SafeAreaView,
   Linking,
 } from 'react-native';
-import { fetchUserReport, fetchTherapistPatientReport, fetchTherapistPatientEntries, fetchUserEntries } from '../services/api';
+import { fetchUserReport, fetchTherapistPatientReport } from '../services/api';
 
 export default function ReportModal({ visible, onClose, userId, therapistId = null }) {
   const [report, setReport] = useState(null);
-  const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -23,13 +22,8 @@ export default function ReportModal({ visible, onClose, userId, therapistId = nu
         ? fetchTherapistPatientReport(therapistId, userId)
         : fetchUserReport(userId);
 
-      const entriesPromise = therapistId
-        ? fetchTherapistPatientEntries(therapistId, userId)
-        : fetchUserEntries(userId);
-
-      Promise.all([reportPromise, entriesPromise]).then(([rep, ent]) => {
+      reportPromise.then((rep) => {
         setReport(rep);
-        setEntries(ent || []);
         setLoading(false);
       });
     }
@@ -206,56 +200,6 @@ export default function ReportModal({ visible, onClose, userId, therapistId = nu
                   })
                 ) : (
                   <Text style={styles.mutedText}>No active stressor threads detected.</Text>
-                )}
-              </View>
-
-              {/* Diary Entry Timeline */}
-              <View style={styles.card}>
-                <Text style={styles.sectionLabel}>DIARY ENTRY TIMELINE</Text>
-                <Text style={styles.diarySubtext}>
-                  Chronological patient reflections with per-entry stress scores.
-                </Text>
-                {entries.length > 0 ? (
-                  [...entries]
-                    .sort((a, b) => new Date(b.date) - new Date(a.date))
-                    .map((entry, idx) => {
-                      const score = Math.round((entry.stress_score || 0) * 100);
-                      const scoreColor = score > 75 ? '#DC2626' : score > 45 ? '#D97706' : '#16A34A';
-                      const dateStr = new Date(entry.date).toLocaleDateString('en-US', {
-                        weekday: 'short', month: 'short', day: 'numeric',
-                      });
-                      const timeStr = new Date(entry.date).toLocaleTimeString('en-US', {
-                        hour: '2-digit', minute: '2-digit',
-                      });
-                      return (
-                        <View key={entry.entry_id || idx} style={styles.entryItem}>
-                          <View style={styles.entryHeader}>
-                            <View>
-                              <Text style={styles.entryDate}>{dateStr} · {timeStr}</Text>
-                              <Text style={styles.entryCategory}>📂 {entry.category}</Text>
-                            </View>
-                            <View style={styles.entryScoreBadge}>
-                              <Text style={[styles.entryScoreText, { color: scoreColor }]}>
-                                {score}%
-                              </Text>
-                              <Text style={styles.entryScoreLabel}>stress</Text>
-                            </View>
-                          </View>
-                          {entry.transcript && entry.transcript !== '[redacted]' && (
-                            <Text style={styles.entryTranscript} numberOfLines={3}>
-                              "{entry.transcript}"
-                            </Text>
-                          )}
-                          {entry.transcript === '[redacted]' && (
-                            <Text style={styles.entryRedacted}>
-                              [Transcript redacted per retention policy]
-                            </Text>
-                          )}
-                        </View>
-                      );
-                    })
-                ) : (
-                  <Text style={styles.mutedText}>No diary entries recorded yet.</Text>
                 )}
               </View>
             </>
@@ -496,61 +440,5 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#5C3818',
     lineHeight: 18,
-  },
-  // ─── Diary Entry Timeline ─────────────────────
-  diarySubtext: {
-    fontSize: 12,
-    color: '#7C522D',
-    marginBottom: 12,
-  },
-  entryItem: {
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(74, 46, 24, 0.06)',
-    paddingVertical: 12,
-  },
-  entryHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: 6,
-  },
-  entryDate: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#4A2E18',
-  },
-  entryCategory: {
-    fontSize: 11,
-    color: '#8D633D',
-    marginTop: 2,
-  },
-  entryScoreBadge: {
-    alignItems: 'center',
-    minWidth: 48,
-  },
-  entryScoreText: {
-    fontSize: 18,
-    fontWeight: '800',
-  },
-  entryScoreLabel: {
-    fontSize: 9,
-    color: '#8D633D',
-    fontWeight: '600',
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  entryTranscript: {
-    fontSize: 13,
-    color: '#5C3818',
-    fontStyle: 'italic',
-    lineHeight: 19,
-    backgroundColor: '#FAF5EA',
-    borderRadius: 8,
-    padding: 10,
-  },
-  entryRedacted: {
-    fontSize: 12,
-    color: '#A47B55',
-    fontStyle: 'italic',
   },
 });

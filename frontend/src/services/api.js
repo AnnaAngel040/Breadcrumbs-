@@ -10,28 +10,6 @@
 
 const BASE_URL = 'http://127.0.0.1:8000';
 
-function readTherapistPatientLinks() {
-  try {
-    if (typeof window !== 'undefined' && window.localStorage) {
-      const raw = window.localStorage.getItem('breadcrumbs_therapist_patient_links');
-      return raw ? JSON.parse(raw) : {};
-    }
-  } catch (e) {
-    console.warn('Could not read therapist-patient links:', e);
-  }
-  return {};
-}
-
-function writeTherapistPatientLinks(data) {
-  try {
-    if (typeof window !== 'undefined' && window.localStorage) {
-      window.localStorage.setItem('breadcrumbs_therapist_patient_links', JSON.stringify(data));
-    }
-  } catch (e) {
-    console.warn('Could not save therapist-patient links:', e);
-  }
-}
-
 // In-memory fallback entries when backend is offline
 const fallbackEntries = {
   demo_escalating: [
@@ -422,27 +400,6 @@ export async function getTherapistPatients(therapistId) {
     // fallback
   }
 
-  const therapistLinks = readTherapistPatientLinks();
-  const linkedPatientIds = therapistLinks[therapistId] || [];
-
-  if (linkedPatientIds.length > 0) {
-    return linkedPatientIds.map((patientId) => {
-      const account = fallbackAccounts[patientId] || { display_name: patientId };
-      const entries = fallbackEntries[patientId] || [];
-      const latestStress = entries.length ? Math.max(...entries.map((e) => Number(e.stress_score || 0))) : 0.5;
-      const severity = latestStress > 0.85 ? 'flagged' : (latestStress > 0.6 ? 'high' : 'low');
-      return {
-        patient_id: patientId,
-        display_name: account.display_name,
-        linked_at: new Date().toISOString(),
-        overall_severity: severity,
-        overall_decay_score: Math.min(0.96, Math.max(0.1, latestStress)),
-        active_stressor_count: Math.max(1, entries.length > 0 ? Math.min(3, entries.length) : 1),
-        crisis_resources_shown: severity === 'flagged',
-      };
-    });
-  }
-
   return [
     {
       patient_id: "demo_escalating",
@@ -484,12 +441,6 @@ export async function linkTherapistPatient(therapistId, patientId) {
   } catch (e) {
     // fallback
   }
-
-  const therapistLinks = readTherapistPatientLinks();
-  const linkedPatients = Array.from(new Set([...(therapistLinks[therapistId] || []), patientId]));
-  therapistLinks[therapistId] = linkedPatients;
-  writeTherapistPatientLinks(therapistLinks);
-
   return { therapist_id: therapistId, patient_id: patientId, linked_at: new Date().toISOString() };
 }
 
