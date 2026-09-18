@@ -15,12 +15,19 @@ import os
 
 from app import transcription, model_client, categorize, database
 
-USE_MOCK_TRANSCRIPTION = os.getenv("USE_MOCK_TRANSCRIPTION", "true").lower() == "true"
+from dotenv import load_dotenv
+load_dotenv()
+
+
 ENABLE_SENTIMENT_FUSION = os.getenv("ENABLE_SENTIMENT_FUSION", "false").lower() == "true"
 
 
+def is_mock_transcription() -> bool:
+    return os.getenv("USE_MOCK_TRANSCRIPTION", "false").lower() == "true"
+
+
 def process_audio_entry(user_id: str, audio_file_path: str) -> dict:
-    if USE_MOCK_TRANSCRIPTION:
+    if is_mock_transcription():
         transcript = transcription.transcribe_mock(audio_file_path)
     else:
         transcript = transcription.transcribe(audio_file_path)

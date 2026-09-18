@@ -75,21 +75,21 @@ def is_ollama_running() -> bool:
 # Runs completely offline and locally without paid API credits.
 KEYWORDS = {
     "Work/Career": ["deadline", "manager", "workload", "meeting", "boss", "coworker",
-                     "promotion", "fired", "job", "shift", "overtime", "project due"],
+                     "promotion", "fired", "job", "shift", "overtime", "project due", "workplace", "career", "office"],
     "Academics": ["exam", "professor", "homework", "assignment", "grade", "gpa",
-                  "class", "lecture", "thesis", "midterm", "finals", "school"],
-    "Relationship": ["boyfriend", "girlfriend", "partner", "breakup", "dating",
-                      "marriage", "spouse", "husband", "wife", "relationship"],
+                  "class", "lecture", "thesis", "midterm", "finals", "school", "studying", "college", "university"],
+    "Relationship": ["boyfriend", "girlfriend", "partner", "breakup", "break up", "dating",
+                      "marriage", "spouse", "husband", "wife", "relationship", "cheating", "ex-boyfriend", "ex-girlfriend", "fiancé", "fiancee"],
     "Family": ["mom", "dad", "parent", "sibling", "brother", "sister",
-               "family", "grandmother", "grandfather", "in-laws"],
+               "family", "grandmother", "grandfather", "in-laws", "mother", "father"],
     "Friends/Social": ["friend", "friendship", "social", "lonely", "isolated",
-                        "party", "hang out", "group chat"],
+                        "party", "hang out", "group chat", "roommate"],
     "Health": ["sick", "diagnosis", "doctor", "pain", "anxiety", "panic",
-               "insomnia", "can't sleep", "therapy", "medication", "symptoms"],
+               "insomnia", "can't sleep", "therapy", "medication", "symptoms", "hospital", "illness", "depressed"],
     "Finances": ["rent", "bills", "debt", "money", "broke", "paycheck",
-                 "loan", "budget", "eviction", "afford"],
+                 "loan", "budget", "eviction", "afford", "salary", "expenses"],
     "Self-esteem/Identity": ["worthless", "identity", "who i am", "confidence",
-                              "self-esteem", "not good enough", "imposter"],
+                              "self-esteem", "not good enough", "imposter", "hate myself", "insecure"],
 }
 
 
@@ -232,25 +232,29 @@ def predict_model2(transcript: str) -> Optional[dict]:
 
 def categorize_with_reason(transcript: str) -> dict:
     """Returns dict {'category': str, 'reason': str}.
-    1. Primary: Runs Model 2 (TF-IDF + Logistic Regression).
-    2. Fallback: If Model 2 is not yet installed or returns 'Other', uses local keyword matching.
-    3. Reason Extraction: Uses local Ollama (Llama 3.2 1B) if running, else keyword-derived trigger.
+    1. Primary: If explicit keywords match Relationship (missing in Model 2 training set),
+       assigns Relationship.
+    2. Otherwise: Runs Model 2 (TF-IDF + Logistic Regression).
+    3. Fallback: Local keyword matching / health concern.
+    4. Reason Extraction: Local Ollama (Llama 3.2 1B) if running, else keyword-derived trigger.
     """
     category = None
-    reason = None
-
-    # 1. Try Model 2 as primary source
-    m2_result = predict_model2(transcript)
-    if m2_result:
-        category = m2_result["category"]
-
-    # 2. Fallback to keyword matching if Model 2 is unavailable
     kw_result = _categorize_keyword(transcript)
+    lowered = transcript.lower()
+
+    # Model 2 does not have a native 'Relationship' class; check explicit relationship terms first
+    if kw_result.get("category") == "Relationship" or any(kw in lowered for kw in KEYWORDS["Relationship"]):
+        category = "Relationship"
+    else:
+        m2_result = predict_model2(transcript)
+        if m2_result and m2_result.get("category") in CANONICAL_CATEGORIES:
+            category = m2_result["category"]
+
     if not category:
         category = kw_result["category"]
     reason = kw_result["reason"]
 
-    # 3. Enhance trigger reasoning via local Ollama if running
+    # Enhance trigger reasoning via local Ollama if running
     ollama_reason = extract_reason_ollama(transcript, category)
     if ollama_reason:
         reason = ollama_reason

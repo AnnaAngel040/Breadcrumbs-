@@ -114,7 +114,7 @@ export default function FindCarePage({
 
   // Active filter chips
   const [activeFilters, setActiveFilters] = useState({
-    specialty: 'Workplace Burnout & CBT',
+    specialty: null,
     format: 'Video & Audio Chat',
     insurance: 'Star Health, HDFC ERGO, Self-pay / Sliding Scale',
   });
@@ -179,7 +179,7 @@ export default function FindCarePage({
 
       setActiveFilters((prev) => ({
         ...prev,
-        specialty: prev.specialty ? categoryConfig.specialtyLabel : null,
+        specialty: categoryConfig.specialtyLabel,
         format: prev.format ? (fmt === 'video' ? 'Video & Audio Chat' : (fmt === 'voice' ? 'Voice Consultation' : 'Text Messaging')) : null,
       }));
     } catch (e) {
@@ -355,18 +355,10 @@ export default function FindCarePage({
                   </Text>
                 </View>
 
-                {/* Circular Fit Score Indicator */}
-                <View style={styles.fitScoreContainer}>
-                  <View style={styles.fitScoreCircle}>
-                    <Text style={styles.fitScoreNumber}>96%</Text>
-                    <Text style={styles.fitScoreLabel}>fit</Text>
-                  </View>
-                  <View style={styles.fitScoreCaptionBox}>
-                    <Text style={styles.fitScoreTitle}>
-                      {therapists.length} Sample Practitioner{therapists.length === 1 ? '' : 's'}
-                    </Text>
-                    <Text style={styles.fitScoreSubtitle}>Sample demo directory</Text>
-                  </View>
+                {/* Verified Practices Count */}
+                <View style={styles.providerCountBadge}>
+                  <Text style={styles.providerCountNumber}>{therapists.length}</Text>
+                  <Text style={styles.providerCountLabel}>Practices Listed</Text>
                 </View>
               </View>
 
@@ -455,11 +447,10 @@ export default function FindCarePage({
                         </Text>
                       </View>
 
-                      {/* Match Score Badge */}
-                      <View style={styles.matchScoreBadge}>
-                        <Text style={styles.matchScoreHeart}>❤️</Text>
-                        <Text style={styles.matchScoreText}>
-                          {therapist.match_percentage || 95}% Match
+                      {/* Specialty Domain Tag (No simulated score) */}
+                      <View style={styles.specialtyBadge}>
+                        <Text style={styles.specialtyBadgeText}>
+                          🌿 {therapist.specialty || 'General Care'}
                         </Text>
                       </View>
                     </View>
@@ -1131,43 +1122,25 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 
-  fitScoreContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginTop: 6,
-  },
-  fitScoreCircle: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    borderWidth: 3,
-    borderColor: '#C27038',
+  providerCountBadge: {
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FFF7F0',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: '#EBDCCE',
   },
-  fitScoreNumber: {
-    fontSize: 16,
+  providerCountNumber: {
+    fontSize: 20,
     fontWeight: '800',
     color: '#4A2E18',
-    lineHeight: 18,
+    lineHeight: 24,
   },
-  fitScoreLabel: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: '#8C6239',
-  },
-  fitScoreCaptionBox: {
-    justifyContent: 'center',
-  },
-  fitScoreTitle: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#3B2313',
-  },
-  fitScoreSubtitle: {
+  providerCountLabel: {
     fontSize: 11,
+    fontWeight: '600',
     color: '#8C6239',
   },
 
@@ -1347,22 +1320,20 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#7D5838',
   },
-  matchScoreBadge: {
+  specialtyBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FBEBE4',
-    paddingVertical: 4,
-    paddingHorizontal: 10,
+    backgroundColor: '#FAF1E6',
+    paddingVertical: 5,
+    paddingHorizontal: 12,
     borderRadius: 12,
-    gap: 5,
+    borderWidth: 1,
+    borderColor: '#EBDCCE',
   },
-  matchScoreHeart: {
-    fontSize: 11,
-  },
-  matchScoreText: {
+  specialtyBadgeText: {
     fontSize: 11,
     fontWeight: '700',
-    color: '#B84A2A',
+    color: '#5C3A21',
   },
 
   metaRow: {
