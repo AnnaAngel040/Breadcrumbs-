@@ -804,6 +804,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#5C3818',
   },
+  gentleAffirmation: {
+    fontSize: 12,
+    color: '#7C522D',
+    fontStyle: 'italic',
+    lineHeight: 18,
+    marginTop: 4,
+  },
 
   signOutBtn: {
     position: 'absolute',
