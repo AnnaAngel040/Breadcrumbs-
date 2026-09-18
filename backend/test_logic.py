@@ -359,6 +359,24 @@ def test_model2_categorization_and_fallback():
     assert isinstance(full_res["reason"], str)
 
 
+def test_model1_binary_prediction():
+    from app.model_client import get_stress_prediction
+    # High stress text
+    high_stress = get_stress_prediction("I am overwhelmed by deadlines and can't sleep at all")
+    assert "stress_score" in high_stress
+    assert "confidence" in high_stress
+    assert "is_stressor" in high_stress
+    assert high_stress["stress_score"] >= 0.4
+    assert high_stress["is_stressor"] is True
+
+    # Neutral / low stress text
+    neutral = get_stress_prediction("I went for a walk in the park today and had tea")
+    assert "stress_score" in neutral
+    assert "confidence" in neutral
+    assert 0.0 <= neutral["stress_score"] <= 1.0
+
+
 import pytest
+
 
 

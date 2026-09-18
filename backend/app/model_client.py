@@ -1,123 +1,223 @@
 """
 model_client.py
 
-Handles stress classification for transcribed diary text.
-Supports 3 operational modes seamlessly:
-  1. Local In-Process Model: If ./stress_model/ exists and torch/transformers are installed,
-     loads Person A's fine-tuned DistilBERT directly into memory (zero latency, no external server).
-  2. Remote HTTP API: If MODEL_API_URL is configured and USE_MOCK_MODEL=false, calls Person A's
-     endpoint (e.g. running on Google Colab via ngrok, or on http://localhost:8001/predict).
-  3. Deterministic Mock: If USE_MOCK_MODEL=true or neither above is ready, returns realistic
-     simulated scores so the entire backend remains testable and runnable offline.
+Handles binary stress classification and stress scoring for transcribed diary text.
+Supports 4 operational modes seamlessly:
+  1. Local Scikit-Learn Model 1 (.pkl): If model1_classifier.pkl and model1_vectorizer.pkl
+     (or model1_pipeline.pkl / model1.pkl) exist in backend/app/, loads scikit-learn model.
+  2. Local In-Process DistilBERT/Transformers: If ./stress_model/ exists and torch/transformers
+     are installed, loads fine-tuned PyTorch model into memory.
+  3. Remote HTTP API: If MODEL_API_URL is configured and USE_MOCK_MODEL=false, calls remote endpoint.
+  4. Heuristic Fallback: If no trained model files exist yet, returns realistic, testable scores.
 
-CONTRACT WITH PERSON A:
-  Input:  transcript string (or {"text": "..."})
-  Output: {"stress_score": float 0-1, "confidence": float 0-1}
+CONTRACT WITH PERSON A (MODEL 1):
+  Input:  transcript string
+  Output: {"stress_score": float 0-1, "confidence": float 0-1, "is_stressor": bool}
 """
 
 import logging
 import os
-import random
-import requests
+import json
+import urllib.request
+import urllib.error
 
 logger = logging.getLogger(__name__)
 
 MODEL_API_URL = os.getenv("MODEL_API_URL", "http://localhost:8001/predict")
-MODEL_LOCAL_PATH = os.getenv("MODEL_LOCAL_PATH", "./stress_model")
-USE_MOCK_MODEL = os.getenv("USE_MOCK_MODEL", "true").lower() == "true"
+MODEL_LOCAL_PATH = os.getenv("MODEL_LOCAL_PATH", os.path.join(os.path.dirname(__file__), "stress_model"))
+USE_MOCK_MODEL = os.getenv("USE_MOCK_MODEL", "false").lower() == "true"
 
-# Cache for locally loaded DistilBERT model & tokenizer
-_local_model = None
-_local_tokenizer = None
-_local_device = None
-_local_load_attempted = False
+# Scikit-Learn Model 1 Cache
+_m1_vectorizer = None
+_m1_classifier = None
+_m1_pipeline = None
+_m1_sklearn_attempted = False
+
+# PyTorch/Transformers Model 1 Cache
+_m1_torch_model = None
+_m1_torch_tokenizer = None
+_m1_torch_device = None
+_m1_torch_attempted = False
 
 
-def _get_local_model():
-    """Lazily load the fine-tuned DistilBERT model from MODEL_LOCAL_PATH if available."""
-    global _local_model, _local_tokenizer, _local_device, _local_load_attempted
-    if _local_load_attempted:
-        return _local_model, _local_tokenizer, _local_device
+def _get_sklearn_model():
+    """Lazily load scikit-learn Model 1 from .pkl files if placed in backend/app/."""
+    global _m1_vectorizer, _m1_classifier, _m1_pipeline, _m1_sklearn_attempted
+    if _m1_sklearn_attempted:
+        return _m1_vectorizer, _m1_classifier, _m1_pipeline
 
-    _local_load_attempted = True
+    _m1_sklearn_attempted = True
+    app_dir = os.path.dirname(__file__)
+
+    # Try combined pipeline first (model1.pkl or model1_pipeline.pkl)
+    for pipe_name in ["model1_pipeline.pkl", "model1.pkl"]:
+        pipe_path = os.path.join(app_dir, pipe_name)
+        if os.path.exists(pipe_path):
+            try:
+                import joblib
+                _m1_pipeline = joblib.load(pipe_path)
+                logger.info(f"Loaded scikit-learn Model 1 pipeline from {pipe_name}")
+                return None, None, _m1_pipeline
+            except Exception as e:
+                logger.warning(f"Failed to load {pipe_name}: {e}")
+
+    # Try separate vectorizer and classifier (model1_vectorizer.pkl + model1_classifier.pkl)
+    vec_path = os.path.join(app_dir, "model1_vectorizer.pkl")
+    clf_path = os.path.join(app_dir, "model1_classifier.pkl")
+
+    if os.path.exists(vec_path) and os.path.exists(clf_path):
+        try:
+            import joblib
+            _m1_vectorizer = joblib.load(vec_path)
+            _m1_classifier = joblib.load(clf_path)
+            logger.info("Loaded scikit-learn Model 1 (vectorizer + classifier) successfully.")
+            return _m1_vectorizer, _m1_classifier, None
+        except Exception as e:
+            logger.warning(f"Failed to load Model 1 pkl files: {e}")
+
+    return None, None, None
+
+
+def _predict_sklearn(transcript: str, vec, clf, pipe) -> dict:
+    """Run inference using loaded scikit-learn Model 1."""
+    if pipe is not None:
+        if hasattr(pipe, "predict_proba"):
+            probs = pipe.predict_proba([transcript])[0]
+            # Assumes class 1 is stressor, class 0 is non-stressor
+            stress_score = float(probs[1]) if len(probs) > 1 else float(probs[0])
+            confidence = float(max(probs))
+        else:
+            pred = pipe.predict([transcript])[0]
+            stress_score = 0.85 if pred in (1, "1", "stress", "stressor") else 0.15
+            confidence = 0.85
+    else:
+        X = vec.transform([transcript])
+        if hasattr(clf, "predict_proba"):
+            probs = clf.predict_proba(X)[0]
+            stress_score = float(probs[1]) if len(probs) > 1 else float(probs[0])
+            confidence = float(max(probs))
+        else:
+            pred = clf.predict(X)[0]
+            stress_score = 0.85 if pred in (1, "1", "stress", "stressor") else 0.15
+            confidence = 0.85
+
+    return {
+        "stress_score": round(min(1.0, max(0.0, stress_score)), 4),
+        "confidence": round(min(1.0, max(0.0, confidence)), 4),
+        "is_stressor": stress_score >= 0.5,
+    }
+
+
+def _get_torch_model():
+    """Lazily load fine-tuned PyTorch / HuggingFace model if directory exists."""
+    global _m1_torch_model, _m1_torch_tokenizer, _m1_torch_device, _m1_torch_attempted
+    if _m1_torch_attempted:
+        return _m1_torch_model, _m1_torch_tokenizer, _m1_torch_device
+
+    _m1_torch_attempted = True
     if not os.path.exists(MODEL_LOCAL_PATH):
         return None, None, None
 
     try:
         import torch
-        from transformers import DistilBertForSequenceClassification, DistilBertTokenizer
+        from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
-        logger.info(f"Loading fine-tuned DistilBERT model from {MODEL_LOCAL_PATH}...")
-        _local_tokenizer = DistilBertTokenizer.from_pretrained(MODEL_LOCAL_PATH)
-        _local_model = DistilBertForSequenceClassification.from_pretrained(MODEL_LOCAL_PATH)
-
-        _local_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        _local_model.to(_local_device)
-        _local_model.eval()  # Set evaluation mode
-        logger.info(f"DistilBERT model loaded successfully on device {_local_device}.")
-        return _local_model, _local_tokenizer, _local_device
+        logger.info(f"Loading PyTorch Model 1 from {MODEL_LOCAL_PATH}...")
+        _m1_torch_tokenizer = AutoTokenizer.from_pretrained(MODEL_LOCAL_PATH)
+        _m1_torch_model = AutoModelForSequenceClassification.from_pretrained(MODEL_LOCAL_PATH)
+        _m1_torch_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        _m1_torch_model.to(_m1_torch_device)
+        _m1_torch_model.eval()
+        logger.info("PyTorch Model 1 loaded successfully.")
+        return _m1_torch_model, _m1_torch_tokenizer, _m1_torch_device
     except Exception as e:
-        logger.warning(f"Could not load local model from {MODEL_LOCAL_PATH}: {e}")
+        logger.warning(f"Could not load PyTorch model from {MODEL_LOCAL_PATH}: {e}")
         return None, None, None
 
 
-def _predict_local(transcript: str, model, tokenizer, device) -> dict:
-    """Runs inference locally on Person A's fine-tuned DistilBERT."""
+def _predict_torch(transcript: str, model, tokenizer, device) -> dict:
+    """Run inference locally on PyTorch / Transformers model."""
     import torch
-
     inputs = tokenizer(transcript, return_tensors="pt", truncation=True, padding=True, max_length=256)
     inputs = {k: v.to(device) for k, v in inputs.items()}
     with torch.no_grad():
         outputs = model(**inputs)
-    probs = torch.softmax(outputs.logits, dim=-1)
-    stress_score = probs[0][1].item()
-    confidence = torch.max(probs[0]).item()
+    probs = torch.softmax(outputs.logits, dim=-1)[0]
+    stress_score = float(probs[1].item()) if len(probs) > 1 else float(probs[0].item())
+    confidence = float(torch.max(probs).item())
     return {
-        "stress_score": round(stress_score, 4),
-        "confidence": round(confidence, 4),
+        "stress_score": round(min(1.0, max(0.0, stress_score)), 4),
+        "confidence": round(min(1.0, max(0.0, confidence)), 4),
+        "is_stressor": stress_score >= 0.5,
     }
 
 
-def _normalize(raw: dict) -> dict:
-    """Map whatever keys A's API actually returns onto our canonical shape."""
-    return {
-        "stress_score": float(raw["stress_score"]),
-        "confidence": float(raw["confidence"]),
-    }
-
-
-def _mock_predict(transcript: str) -> dict:
-    """Deterministic-ish fake prediction so pipeline behavior is testable."""
-    stress_words = ["overwhelm", "deadline", "anxious", "can't sleep", "exhausted", "pressure", "cried", "rough"]
+def _heuristic_predict(transcript: str) -> dict:
+    """Deterministic, keyword-informed prediction for fallback testing."""
+    stress_keywords = [
+        "overwhelm", "deadline", "anxious", "panic", "can't sleep", "exhausted",
+        "pressure", "cried", "rough", "struggling", "scared", "worried", "terrible",
+        "failing", "cannot afford", "argument", "fight", "alone", "hopeless"
+    ]
     lowered = transcript.lower()
-    base = 0.3 + 0.1 * sum(w in lowered for w in stress_words)
-    score = min(0.95, base + random.uniform(-0.05, 0.05))
+    matches = sum(kw in lowered for kw in stress_keywords)
+    if matches > 0:
+        score = min(0.95, 0.45 + (matches * 0.15))
+        conf = min(0.95, 0.75 + (matches * 0.05))
+        is_stress = True
+    else:
+        score = 0.20
+        conf = 0.80
+        is_stress = False
+
     return {
         "stress_score": round(score, 3),
-        "confidence": round(random.uniform(0.6, 0.95), 3),
+        "confidence": round(conf, 3),
+        "is_stressor": is_stress,
     }
 
 
 def get_stress_prediction(transcript: str) -> dict:
-    """Returns {"stress_score": float, "confidence": float}.
-    Checks local fine-tuned model first, then remote endpoint, then mock.
+    """Returns {"stress_score": float, "confidence": float, "is_stressor": bool}.
+    Checks scikit-learn (.pkl) -> PyTorch/Transformers -> Remote API -> Heuristic Fallback.
     """
-    # 1. Try local fine-tuned model if directory exists and mock not explicitly forced
     if not USE_MOCK_MODEL:
-        model, tokenizer, device = _get_local_model()
-        if model is not None and tokenizer is not None:
-            return _predict_local(transcript, model, tokenizer, device)
+        # 1. Try local Scikit-Learn Model (.pkl)
+        vec, clf, pipe = _get_sklearn_model()
+        if pipe is not None or (vec is not None and clf is not None):
+            try:
+                return _predict_sklearn(transcript, vec, clf, pipe)
+            except Exception as e:
+                logger.warning(f"Scikit-learn Model 1 inference failed: {e}")
 
-        # 2. Try remote API endpoint (e.g. Colab ngrok or local microservice)
+        # 2. Try local PyTorch / DistilBERT model
+        torch_model, tokenizer, device = _get_torch_model()
+        if torch_model is not None and tokenizer is not None:
+            try:
+                return _predict_torch(transcript, torch_model, tokenizer, device)
+            except Exception as e:
+                logger.warning(f"PyTorch Model 1 inference failed: {e}")
+
+        # 3. Try remote API endpoint (e.g. FastAPI service / Colab ngrok)
         try:
-            # Send both 'text' and 'transcript' keys so whatever Person A uses works
-            payload = {"text": transcript, "transcript": transcript}
-            resp = requests.post(MODEL_API_URL, json=payload, timeout=15)
-            resp.raise_for_status()
-            return _normalize(resp.json())
-        except Exception as e:
-            logger.warning(f"Remote model call to {MODEL_API_URL} failed: {e}. Falling back to mock.")
+            payload = json.dumps({"text": transcript, "transcript": transcript}).encode("utf-8")
+            req = urllib.request.Request(
+                MODEL_API_URL,
+                data=payload,
+                headers={"Content-Type": "application/json"},
+                method="POST"
+            )
+            with urllib.request.urlopen(req, timeout=5) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+                raw_score = float(data.get("stress_score", data.get("score", 0.5)))
+                raw_conf = float(data.get("confidence", 0.8))
+                return {
+                    "stress_score": round(raw_score, 4),
+                    "confidence": round(raw_conf, 4),
+                    "is_stressor": data.get("is_stressor", raw_score >= 0.5),
+                }
+        except Exception:
+            pass
 
-    # 3. Fallback to mock
-    return _mock_predict(transcript)
-
+    # 4. Heuristic fallback
+    return _heuristic_predict(transcript)
