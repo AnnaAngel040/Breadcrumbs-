@@ -31,6 +31,8 @@ ACUTE_RISK_PHRASES = [
     "abused me",
     "domestic violence",
     "physically hurt me",
+    "kms",
+    "suicide",
 ]
 
 
