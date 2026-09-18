@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   ScrollView,
   SafeAreaView,
-  Linking,
 } from 'react-native';
 import { fetchUserReport, fetchTherapistPatientReport } from '../services/api';
 
@@ -48,14 +47,6 @@ export default function ReportModal({ visible, onClose, userId, therapistId = nu
     return { icon: '➡️', text: 'Stable', color: '#D97706' };
   };
 
-  const handleCall = (number) => {
-    try {
-      Linking.openURL(`tel:${number}`);
-    } catch (e) {
-      console.log('Call action', number);
-    }
-  };
-
   return (
     <Modal visible={visible} animationType="slide" transparent={false} onRequestClose={onClose}>
       <SafeAreaView style={styles.safeArea}>
@@ -75,37 +66,6 @@ export default function ReportModal({ visible, onClose, userId, therapistId = nu
             </View>
           ) : report ? (
             <>
-              {/* MANDATORY CRISIS HOTLINE BANNER (Triggered when flagged or crisis_resources_shown) */}
-              {(report.crisis_resources_shown || report.overall_severity === 'flagged') && (
-                <View style={styles.crisisBanner}>
-                  <View style={styles.crisisHeaderRow}>
-                    <Text style={styles.crisisAlertIcon}>🚨</Text>
-                    <Text style={styles.crisisTitle}>Immediate Support & Crisis Resources</Text>
-                  </View>
-                  <Text style={styles.crisisSubtext}>
-                    We detected expressions of acute distress. You are not alone—free, confidential help is available 24/7.
-                  </Text>
-
-                  <View style={styles.hotlineActions}>
-                    <TouchableOpacity
-                      style={styles.hotlineBtn}
-                      onPress={() => handleCall('988')}
-                    >
-                      <Text style={styles.hotlineBtnMain}>📞 988 Lifeline</Text>
-                      <Text style={styles.hotlineBtnSub}>Call or text 988 anytime</Text>
-                    </TouchableOpacity>
-
-                    <TouchableOpacity
-                      style={[styles.hotlineBtn, styles.hotlineBtnSecondary]}
-                      onPress={() => handleCall('741741')}
-                    >
-                      <Text style={styles.hotlineBtnMain}>💬 Crisis Text Line</Text>
-                      <Text style={styles.hotlineBtnSub}>Text HOME to 741741</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              )}
-
               {/* Overall Severity Card */}
               <View style={styles.card}>
                 <Text style={styles.sectionLabel}>OVERALL CLINICAL STATUS ({report.period})</Text>
@@ -291,64 +251,6 @@ const styles = StyleSheet.create({
   loadingText: {
     fontSize: 15,
     color: '#6B4423',
-  },
-  crisisBanner: {
-    backgroundColor: '#FEE2E2',
-    borderColor: '#DC2626',
-    borderWidth: 2,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: '#DC2626',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  crisisHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  crisisAlertIcon: {
-    fontSize: 20,
-    marginRight: 8,
-  },
-  crisisTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#991B1B',
-  },
-  crisisSubtext: {
-    fontSize: 13,
-    color: '#7F1D1D',
-    lineHeight: 18,
-    marginBottom: 14,
-  },
-  hotlineActions: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  hotlineBtn: {
-    flex: 1,
-    backgroundColor: '#DC2626',
-    borderRadius: 12,
-    paddingVertical: 10,
-    paddingHorizontal: 8,
-    alignItems: 'center',
-  },
-  hotlineBtnSecondary: {
-    backgroundColor: '#991B1B',
-  },
-  hotlineBtnMain: {
-    color: '#FFFFFF',
-    fontWeight: '800',
-    fontSize: 13,
-    marginBottom: 2,
-  },
-  hotlineBtnSub: {
-    color: 'rgba(255, 255, 255, 0.85)',
-    fontSize: 10,
   },
   card: {
     backgroundColor: '#FFFDF7',
