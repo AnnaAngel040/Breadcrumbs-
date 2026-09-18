@@ -456,4 +456,14 @@ export async function fetchTherapistPatientReport(therapistId, patientId) {
   return fetchUserReport(patientId);
 }
 
-
+export async function fetchTherapistPatientEntries(therapistId, patientId) {
+  try {
+    const res = await fetch(`${BASE_URL}/therapists/${encodeURIComponent(therapistId)}/patients/${encodeURIComponent(patientId)}/entries`, {
+      signal: AbortSignal.timeout(3000)
+    });
+    if (res.ok) return await res.json();
+  } catch (e) {
+    console.warn('Therapist entries endpoint unreachable, falling back:', e.message);
+  }
+  return fetchUserEntries(patientId);
+}

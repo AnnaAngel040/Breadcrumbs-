@@ -9,11 +9,10 @@ import {
   SafeAreaView,
   Linking,
 } from 'react-native';
-import { fetchUserReport, fetchTherapists, fetchTherapistPatientReport } from '../services/api';
+import { fetchUserReport, fetchTherapistPatientReport } from '../services/api';
 
 export default function ReportModal({ visible, onClose, userId, therapistId = null }) {
   const [report, setReport] = useState(null);
-  const [therapists, setTherapists] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -23,11 +22,8 @@ export default function ReportModal({ visible, onClose, userId, therapistId = nu
         ? fetchTherapistPatientReport(therapistId, userId)
         : fetchUserReport(userId);
 
-      reportPromise.then(async (rep) => {
+      reportPromise.then((rep) => {
         setReport(rep);
-        const topCat = rep.stressors && rep.stressors.length > 0 ? rep.stressors[0].category : 'Work/Career';
-        const thList = await fetchTherapists(userId, topCat);
-        setTherapists(thList);
         setLoading(false);
       });
     }
@@ -159,6 +155,7 @@ export default function ReportModal({ visible, onClose, userId, therapistId = nu
                 {report.stressors && report.stressors.length > 0 ? (
                   report.stressors.map((th, i) => {
                     const trend = getTrendIcon(th.trend);
+                    const sevStyle = getSeverityStyle(th.severity);
                     return (
                       <View key={i} style={styles.threadItem}>
                         <View style={styles.threadTop}>
@@ -170,51 +167,40 @@ export default function ReportModal({ visible, onClose, userId, therapistId = nu
                           </View>
                         </View>
                         <View style={styles.threadStats}>
+                          <View style={[styles.threadSevBadge, { backgroundColor: sevStyle.bg }]}>
+                            <Text style={[styles.threadSevBadgeText, { color: sevStyle.color }]}>
+                              {sevStyle.label}
+                            </Text>
+                          </View>
                           <Text style={styles.threadStat}>Entries: {th.entry_count}</Text>
                           <Text style={styles.threadStat}>
                             Decay: {Math.round((th.current_decay_score || 0) * 100)}%
                           </Text>
-                          <Text style={styles.threadStat}>Severity: {th.severity}</Text>
                         </View>
+                        {th.recent_triggers && th.recent_triggers.length > 0 && (
+                          <View style={styles.triggersBox}>
+                            <Text style={styles.triggersLabel}>Recent Triggers:</Text>
+                            {th.recent_triggers.map((trigger, ti) => (
+                              <View key={ti} style={styles.triggerPill}>
+                                <Text style={styles.triggerText}>• {trigger}</Text>
+                              </View>
+                            ))}
+                          </View>
+                        )}
+                        {th.latest_reason && (!th.recent_triggers || th.recent_triggers.length === 0) && (
+                          <View style={styles.triggersBox}>
+                            <Text style={styles.triggersLabel}>Latest Trigger:</Text>
+                            <View style={styles.triggerPill}>
+                              <Text style={styles.triggerText}>• {th.latest_reason}</Text>
+                            </View>
+                          </View>
+                        )}
                       </View>
                     );
                   })
                 ) : (
                   <Text style={styles.mutedText}>No active stressor threads detected.</Text>
                 )}
-              </View>
-
-              {/* Matched Therapists */}
-              <View style={styles.card}>
-                <Text style={styles.sectionLabel}>RECOMMENDED CLINICIANS & SPECIALISTS</Text>
-                <Text style={styles.clinicianSub}>
-                  Matched by clinical category, severity tier suitability, and proximity.
-                </Text>
-
-                {therapists.map((t, idx) => (
-                  <View key={t.id || idx} style={styles.therapistCard}>
-                    <View style={styles.therapistHeader}>
-                      <Text style={styles.therapistName}>{t.name}</Text>
-                      <Text style={styles.ratingText}>★ {t.rating}</Text>
-                    </View>
-                    <Text style={styles.therapistSpecialty}>Focus: {t.specialty}</Text>
-                    <Text style={styles.therapistLocation}>
-                      📍 {t.address} {t.distance_km ? `(${t.distance_km} km away)` : '(Telehealth)'}
-                    </Text>
-                    <View style={styles.tagRow}>
-                      {t.modes && t.modes.map((m, mi) => (
-                        <View key={mi} style={styles.modeTag}>
-                          <Text style={styles.modeTagText}>{m.toUpperCase()}</Text>
-                        </View>
-                      ))}
-                      <View style={[styles.modeTag, { backgroundColor: '#EDE9FE' }]}>
-                        <Text style={[styles.modeTagText, { color: '#6D28D9' }]}>
-                          MATCH {Math.round((t.match_score || 1.5) * 50)}%
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-                ))}
               </View>
             </>
           ) : null}
@@ -410,68 +396,49 @@ const styles = StyleSheet.create({
   },
   threadStats: {
     flexDirection: 'row',
-    gap: 14,
+    gap: 10,
+    alignItems: 'center',
+    flexWrap: 'wrap',
   },
   threadStat: {
     fontSize: 12,
     color: '#7C522D',
+  },
+  threadSevBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+  },
+  threadSevBadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 0.3,
   },
   mutedText: {
     fontSize: 13,
     color: '#8D633D',
     fontStyle: 'italic',
   },
-  clinicianSub: {
-    fontSize: 12,
-    color: '#7C522D',
-    marginBottom: 12,
-  },
-  therapistCard: {
+  // ─── Triggers ──────────────────────────────────
+  triggersBox: {
+    marginTop: 8,
     backgroundColor: '#FAF5EA',
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(74, 46, 24, 0.05)',
+    borderRadius: 8,
+    padding: 10,
   },
-  therapistHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  triggersLabel: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#825C3C',
+    letterSpacing: 0.4,
     marginBottom: 4,
   },
-  therapistName: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#382211',
+  triggerPill: {
+    marginTop: 2,
   },
-  ratingText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#D97706',
-  },
-  therapistSpecialty: {
+  triggerText: {
     fontSize: 12,
-    color: '#6B4423',
-    marginBottom: 2,
-  },
-  therapistLocation: {
-    fontSize: 11,
-    color: '#8D633D',
-    marginBottom: 6,
-  },
-  tagRow: {
-    flexDirection: 'row',
-    gap: 6,
-  },
-  modeTag: {
-    backgroundColor: '#E0E7FF',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 6,
-  },
-  modeTagText: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#4338CA',
+    color: '#5C3818',
+    lineHeight: 18,
   },
 });
