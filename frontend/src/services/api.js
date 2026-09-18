@@ -231,3 +231,130 @@ export async function deleteUserData(userId) {
   }
   return false;
 }
+
+// ─── Account & Auth Management ──────────────────────────────────────────────
+
+// In-memory fallback accounts for demo mode
+const fallbackAccounts = {
+  demo_escalating: { user_id: 'demo_escalating', display_name: 'Alex Rivera', role: 'patient', email: 'alex@example.com' },
+  demo_improving: { user_id: 'demo_improving', display_name: 'Jordan Taylor', role: 'patient', email: 'jordan@example.com' },
+  demo_flagged: { user_id: 'demo_flagged', display_name: 'Sam Harper', role: 'patient', email: 'sam@example.com' },
+  th_chen: { user_id: 'th_chen', display_name: 'Dr. Amara Chen', role: 'therapist', email: 'amara.chen@clinic.org' }
+};
+
+export async function createAccount(userId, displayName, role = 'patient', email = null) {
+  try {
+    const res = await fetch(`${BASE_URL}/accounts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        user_id: userId,
+        display_name: displayName,
+        role: role,
+        email: email || undefined
+      }),
+      signal: AbortSignal.timeout(3500)
+    });
+    if (res.ok) {
+      return await res.json();
+    } else if (res.status === 409) {
+      throw new Error('This User ID is already registered.');
+    }
+  } catch (err) {
+    if (err.message.includes('already registered')) throw err;
+    console.warn('Backend accounts unavailable, saving simulated account:', err.message);
+  }
+
+  // Fallback simulation
+  const newAccount = {
+    user_id: userId,
+    display_name: displayName,
+    role: role,
+    email: email || '',
+    created_at: new Date().toISOString()
+  };
+  fallbackAccounts[userId] = newAccount;
+  return newAccount;
+}
+
+export async function getAccount(userId) {
+  try {
+    const res = await fetch(`${BASE_URL}/accounts/${encodeURIComponent(userId)}`, { signal: AbortSignal.timeout(2500) });
+    if (res.ok) return await res.json();
+  } catch (err) {
+    // fallback
+  }
+  return fallbackAccounts[userId] || {
+    user_id: userId,
+    display_name: userId,
+    role: userId.startsWith('th_') ? 'therapist' : 'patient',
+    email: `${userId}@breadcrumbs.internal`,
+    created_at: new Date().toISOString()
+  };
+}
+
+export async function listAllUsers() {
+  try {
+    const res = await fetch(`${BASE_URL}/admin/users`, { signal: AbortSignal.timeout(2000) });
+    if (res.ok) {
+      const data = await res.json();
+      return data.user_ids || [];
+    }
+  } catch (e) {
+    // fallback
+  }
+  return Object.keys(fallbackAccounts);
+}
+
+export async function getTherapistPatients(therapistId) {
+  try {
+    const res = await fetch(`${BASE_URL}/therapists/${encodeURIComponent(therapistId)}/patients`, { signal: AbortSignal.timeout(3000) });
+    if (res.ok) return await res.json();
+  } catch (e) {
+    // fallback
+  }
+
+  return [
+    {
+      patient_id: "demo_escalating",
+      display_name: "Alex Rivera",
+      linked_at: new Date(Date.now() - 14*86400000).toISOString(),
+      overall_severity: "high",
+      overall_decay_score: 0.742,
+      active_stressor_count: 2,
+      crisis_resources_shown: false
+    },
+    {
+      patient_id: "demo_improving",
+      display_name: "Jordan Taylor",
+      linked_at: new Date(Date.now() - 10*86400000).toISOString(),
+      overall_severity: "low",
+      overall_decay_score: 0.315,
+      active_stressor_count: 1,
+      crisis_resources_shown: false
+    },
+    {
+      patient_id: "demo_flagged",
+      display_name: "Sam Harper",
+      linked_at: new Date(Date.now() - 2*86400000).toISOString(),
+      overall_severity: "flagged",
+      overall_decay_score: 0.960,
+      active_stressor_count: 1,
+      crisis_resources_shown: true
+    }
+  ];
+}
+
+export async function linkTherapistPatient(therapistId, patientId) {
+  try {
+    const res = await fetch(`${BASE_URL}/therapists/${encodeURIComponent(therapistId)}/patients/${encodeURIComponent(patientId)}`, {
+      method: 'POST',
+      signal: AbortSignal.timeout(3000)
+    });
+    if (res.ok) return await res.json();
+  } catch (e) {
+    // fallback
+  }
+  return { therapist_id: therapistId, patient_id: patientId, linked_at: new Date().toISOString() };
+}
+

@@ -9,21 +9,23 @@ import {
   TextInput,
   Animated,
   ActivityIndicator,
-  Platform,
 } from 'react-native';
 
 import Mascot from './components/Mascot';
 import CalendarModal from './components/CalendarModal';
 import ReportModal from './components/ReportModal';
 import ProfileModal from './components/ProfileModal';
+import WelcomePage from './components/WelcomePage';
+import TherapistPortalModal from './components/TherapistPortalModal';
 import {
   checkBackendStatus,
   submitTextEntry,
   submitAudioEntry,
 } from './services/api';
 
-export default function App() {
-  const [userId, setUserId] = useState('demo_escalating');
+// ─── Hero Screen (patient check-in view) ──────────────────────────────────────
+function HeroScreen({ account, onBack }) {
+  const userId = account?.user_id ?? 'demo_escalating';
   const [backendOnline, setBackendOnline] = useState(false);
 
   // Modals
@@ -37,11 +39,9 @@ export default function App() {
   const [showTextInput, setShowTextInput] = useState(false);
   const [textInput, setTextInput] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // Last Entry Result
   const [lastResult, setLastResult] = useState(null);
 
-  // Audio Recording Refs (Web Audio)
+  // Audio Recording Refs
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const timerIntervalRef = useRef(null);
@@ -50,7 +50,7 @@ export default function App() {
   const micScaleAnim = useRef(new Animated.Value(1)).current;
   const resultFadeAnim = useRef(new Animated.Value(0)).current;
 
-  // Check backend health on mount
+  // Backend health check
   useEffect(() => {
     checkBackendStatus().then((online) => setBackendOnline(online));
     const interval = setInterval(() => {
@@ -59,15 +59,13 @@ export default function App() {
     return () => clearInterval(interval);
   }, []);
 
-  // Timer for audio recording
+  // Timer for audio recording + mic pulse animation
   useEffect(() => {
     if (isRecording) {
       setRecordingSeconds(0);
       timerIntervalRef.current = setInterval(() => {
         setRecordingSeconds((sec) => sec + 1);
       }, 1000);
-
-      // Mic pulse animation
       Animated.loop(
         Animated.sequence([
           Animated.timing(micScaleAnim, { toValue: 1.08, duration: 400, useNativeDriver: true }),
@@ -83,49 +81,40 @@ export default function App() {
     };
   }, [isRecording]);
 
-  // Handle Voice Recording Toggle
   const toggleRecording = async () => {
     if (isRecording) {
-      // Stop recording
       setIsRecording(false);
       setIsSubmitting(true);
-
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
         mediaRecorderRef.current.stop();
       } else {
-        // Fallback simulation
         setTimeout(async () => {
           const res = await submitAudioEntry(userId, new Blob());
           handleEntrySuccess(res);
         }, 1200);
       }
     } else {
-      // Start recording
       setLastResult(null);
       resultFadeAnim.setValue(0);
-
       if (navigator && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
         try {
           const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
           const recorder = new MediaRecorder(stream);
           mediaRecorderRef.current = recorder;
           audioChunksRef.current = [];
-
           recorder.ondataavailable = (event) => {
             if (event.data.size > 0) audioChunksRef.current.push(event.data);
           };
-
           recorder.onstop = async () => {
             const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
             stream.getTracks().forEach((track) => track.stop());
             const res = await submitAudioEntry(userId, audioBlob);
             handleEntrySuccess(res);
           };
-
           recorder.start();
           setIsRecording(true);
         } catch (err) {
-          console.warn('Microphone access not available, running interactive demo audio mode:', err.message);
+          console.warn('Microphone access not available, running demo mode:', err.message);
           setIsRecording(true);
         }
       } else {
@@ -134,13 +123,11 @@ export default function App() {
     }
   };
 
-  // Handle Text Submission
   const handleTextSubmit = async () => {
     if (!textInput.trim() || isSubmitting) return;
     setIsSubmitting(true);
     setLastResult(null);
     resultFadeAnim.setValue(0);
-
     const res = await submitTextEntry(userId, textInput.trim());
     setTextInput('');
     setShowTextInput(false);
@@ -165,9 +152,9 @@ export default function App() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Top Header spanning full desktop width with icons at top corners */}
+      {/* Top Header */}
       <View style={styles.header}>
-        {/* Profile Button (Top-Left Corner) */}
+        {/* Profile Button (Top-Left) */}
         <TouchableOpacity
           style={styles.iconButton}
           onPress={() => setProfileVisible(true)}
@@ -180,12 +167,12 @@ export default function App() {
           />
         </TouchableOpacity>
 
-        {/* Brand Title (Centered) */}
-        <View style={styles.titleWrapper}>
+        {/* Centered Brand */}
+        <View style={styles.titleWrapper} pointerEvents="none">
           <Text style={styles.headerTitle}>Breadcrumbs</Text>
         </View>
 
-        {/* Calendar Button (Top-Right Corner) */}
+        {/* Calendar Button (Top-Right) */}
         <TouchableOpacity
           style={styles.iconButton}
           onPress={() => setCalendarVisible(true)}
@@ -199,17 +186,14 @@ export default function App() {
         </TouchableOpacity>
       </View>
 
-      {/* Main Screen Content */}
+      {/* Main Check-in Stage */}
       <View style={styles.mainStage}>
-        {/* Circular Mascot Stage */}
         <View style={styles.circleStage}>
           <Mascot state={isRecording ? 'listening' : isSubmitting ? 'thinking' : 'idle'} size={95} />
         </View>
 
-        {/* Prompt Question */}
-        <Text style={styles.promptText}>“How was your day?”</Text>
+        <Text style={styles.promptText}>"How was your day?"</Text>
 
-        {/* Live Audio Status if Recording */}
         {isRecording && (
           <View style={styles.recordingPill}>
             <View style={styles.recordingDot} />
@@ -217,7 +201,6 @@ export default function App() {
           </View>
         )}
 
-        {/* Submitting Loading Indicator */}
         {isSubmitting && (
           <View style={styles.submittingBox}>
             <ActivityIndicator size="small" color="#5C3818" />
@@ -225,7 +208,6 @@ export default function App() {
           </View>
         )}
 
-        {/* Microphone Pill Button (User Component) */}
         <Animated.View style={{ transform: [{ scale: micScaleAnim }] }}>
           <TouchableOpacity
             style={[styles.micPillWrapper, isRecording && styles.micPillActive]}
@@ -241,7 +223,6 @@ export default function App() {
           </TouchableOpacity>
         </Animated.View>
 
-        {/* Toggle Text Input Option */}
         <TouchableOpacity
           style={styles.typeToggleBtn}
           onPress={() => setShowTextInput(!showTextInput)}
@@ -251,7 +232,6 @@ export default function App() {
           </Text>
         </TouchableOpacity>
 
-        {/* Text Input Box */}
         {showTextInput && (
           <View style={styles.textInputContainer}>
             <TextInput
@@ -272,14 +252,12 @@ export default function App() {
           </View>
         )}
 
-        {/* Entry Result Card */}
         {lastResult && (
           <Animated.View style={[styles.resultCard, { opacity: resultFadeAnim }]}>
             <View style={styles.resultHeader}>
               <Text style={styles.resultCheck}>✓ Check-in Logged</Text>
               <Text style={styles.resultCategory}>📂 {lastResult.category}</Text>
             </View>
-
             <View style={styles.scoreRow}>
               <Text style={styles.scoreLabel}>Detected Stress Level:</Text>
               <Text
@@ -298,7 +276,6 @@ export default function App() {
                 {Math.round((lastResult.stress_score || 0) * 100)}%
               </Text>
             </View>
-
             <TouchableOpacity
               style={styles.viewReportBtn}
               onPress={() => setReportVisible(true)}
@@ -315,28 +292,77 @@ export default function App() {
         onClose={() => setCalendarVisible(false)}
         userId={userId}
       />
-
       <ReportModal
         visible={reportVisible}
         onClose={() => setReportVisible(false)}
         userId={userId}
       />
-
       <ProfileModal
         visible={profileVisible}
         onClose={() => setProfileVisible(false)}
         userId={userId}
-        onSelectUser={(newId) => {
-          setUserId(newId);
-          setLastResult(null);
-        }}
+        onSelectUser={() => {}}
         onOpenReport={() => {
           setProfileVisible(false);
           setReportVisible(true);
         }}
         backendOnline={backendOnline}
       />
+
+      {/* Back to Welcome */}
+      <TouchableOpacity style={styles.signOutBtn} onPress={onBack}>
+        <Text style={styles.signOutText}>← Back to Welcome</Text>
+      </TouchableOpacity>
     </SafeAreaView>
+  );
+}
+
+// ─── Root Router ──────────────────────────────────────────────────────────────
+export default function App() {
+  const [screen, setScreen] = useState('welcome');
+  const [activeAccount, setActiveAccount] = useState(null);
+
+  const handleEnterAsPatient = (account) => {
+    setActiveAccount(account);
+    setScreen('hero');
+  };
+
+  const handleEnterAsTherapist = (account) => {
+    setActiveAccount(account);
+    setScreen('therapist');
+  };
+
+  const handleSelectPatient = (patient) => {
+    setActiveAccount(patient);
+    setScreen('hero');
+  };
+
+  if (screen === 'welcome') {
+    return (
+      <WelcomePage
+        onEnterAsPatient={handleEnterAsPatient}
+        onEnterAsTherapist={handleEnterAsTherapist}
+      />
+    );
+  }
+
+  if (screen === 'therapist') {
+    return (
+      <TherapistPortalModal
+        visible={true}
+        onClose={() => setScreen('welcome')}
+        therapistId={activeAccount?.user_id || 'demo_therapist'}
+        therapistAccount={activeAccount}
+        onSelectPatient={handleSelectPatient}
+      />
+    );
+  }
+
+  return (
+    <HeroScreen
+      account={activeAccount}
+      onBack={() => setScreen('welcome')}
+    />
   );
 }
 
@@ -366,7 +392,6 @@ const styles = StyleSheet.create({
     right: 0,
     alignItems: 'center',
     justifyContent: 'center',
-    pointerEvents: 'none',
   },
   iconButton: {
     padding: 10,
@@ -569,5 +594,19 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#5C3818',
+  },
+  signOutBtn: {
+    position: 'absolute',
+    bottom: 14,
+    left: 20,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    backgroundColor: 'rgba(74, 46, 24, 0.08)',
+  },
+  signOutText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#7C522D',
   },
 });
