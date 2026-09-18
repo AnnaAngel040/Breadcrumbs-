@@ -19,11 +19,20 @@ export default function ProfileModal({
   onSignOut,
   backendOnline,
   onSwitchPersona,
+  onSelectUser,
 }) {
   const [deleteMessage, setDeleteMessage] = useState('');
   const displayName = account?.display_name || userId;
   const role = account?.role || (userId?.startsWith('th_') ? 'therapist' : 'patient');
   const email = account?.email || `${userId}@breadcrumbs.internal`;
+
+  const handleSelectPersona = (p) => {
+    if (onSwitchPersona) {
+      onSwitchPersona(p);
+    } else if (onSelectUser) {
+      onSelectUser(p.user_id);
+    }
+  };
 
   const handleDelete = async () => {
     const success = await deleteUserData(userId);
@@ -112,70 +121,68 @@ export default function ProfileModal({
           </View>
 
           {/* Active Testing Persona Switcher */}
-          {onSwitchPersona ? (
-            <View style={styles.personaCard}>
-              <Text style={styles.personaTitle}>🎭 Active Clinical Persona Switcher</Text>
-              <Text style={styles.personaDesc}>
-                Quickly switch your active profile to test different stress trajectory curves:
-              </Text>
-              <View style={styles.personaGrid}>
-                <TouchableOpacity
-                  style={[
-                    styles.personaBtn,
-                    userId === 'demo_escalating' && styles.personaBtnActive,
-                  ]}
-                  onPress={() =>
-                    onSwitchPersona({
-                      user_id: 'demo_escalating',
-                      display_name: 'Alex Rivera',
-                      role: 'patient',
-                      email: 'alex@example.com',
-                    })
-                  }
-                >
-                  <Text style={styles.personaBtnTitle}>Alex</Text>
-                  <Text style={styles.personaBtnSub}>Escalating</Text>
-                </TouchableOpacity>
+          <View style={styles.personaCard}>
+            <Text style={styles.personaTitle}>🎭 Active Clinical Persona Switcher</Text>
+            <Text style={styles.personaDesc}>
+              Quickly switch your active profile to test different stress trajectory curves:
+            </Text>
+            <View style={styles.personaGrid}>
+              <TouchableOpacity
+                style={[
+                  styles.personaBtn,
+                  userId === 'demo_escalating' && styles.personaBtnActive,
+                ]}
+                onPress={() =>
+                  handleSelectPersona({
+                    user_id: 'demo_escalating',
+                    display_name: 'Alex Rivera',
+                    role: 'patient',
+                    email: 'alex@example.com',
+                  })
+                }
+              >
+                <Text style={styles.personaBtnTitle}>Alex</Text>
+                <Text style={styles.personaBtnSub}>Escalating</Text>
+              </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={[
-                    styles.personaBtn,
-                    userId === 'demo_improving' && styles.personaBtnActive,
-                  ]}
-                  onPress={() =>
-                    onSwitchPersona({
-                      user_id: 'demo_improving',
-                      display_name: 'Jordan Taylor',
-                      role: 'patient',
-                      email: 'jordan@example.com',
-                    })
-                  }
-                >
-                  <Text style={styles.personaBtnTitle}>Jordan</Text>
-                  <Text style={styles.personaBtnSub}>Improving</Text>
-                </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.personaBtn,
+                  userId === 'demo_improving' && styles.personaBtnActive,
+                ]}
+                onPress={() =>
+                  handleSelectPersona({
+                    user_id: 'demo_improving',
+                    display_name: 'Jordan Taylor',
+                    role: 'patient',
+                    email: 'jordan@example.com',
+                  })
+                }
+              >
+                <Text style={styles.personaBtnTitle}>Jordan</Text>
+                <Text style={styles.personaBtnSub}>Improving</Text>
+              </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={[
-                    styles.personaBtn,
-                    userId === 'demo_flagged' && styles.personaBtnActive,
-                    { borderColor: '#DC2626' },
-                  ]}
-                  onPress={() =>
-                    onSwitchPersona({
-                      user_id: 'demo_flagged',
-                      display_name: 'Sam Harper',
-                      role: 'patient',
-                      email: 'sam@example.com',
-                    })
-                  }
-                >
-                  <Text style={[styles.personaBtnTitle, { color: '#B91C1C' }]}>Sam</Text>
-                  <Text style={styles.personaBtnSub}>Flagged Alert</Text>
-                </TouchableOpacity>
-              </View>
+              <TouchableOpacity
+                style={[
+                  styles.personaBtn,
+                  userId === 'demo_flagged' && styles.personaBtnActive,
+                  { borderColor: '#DC2626' },
+                ]}
+                onPress={() =>
+                  handleSelectPersona({
+                    user_id: 'demo_flagged',
+                    display_name: 'Sam Harper',
+                    role: 'patient',
+                    email: 'sam@example.com',
+                  })
+                }
+              >
+                <Text style={[styles.personaBtnTitle, { color: '#B91C1C' }]}>Sam</Text>
+                <Text style={styles.personaBtnSub}>Flagged Alert</Text>
+              </TouchableOpacity>
             </View>
-          ) : null}
+          </View>
 
           {/* Sign Out Button */}
           {onSignOut ? (

@@ -6,12 +6,16 @@ import {
   TouchableOpacity,
   SafeAreaView,
   ScrollView,
-  Animated,
   Image,
 } from 'react-native';
 import AuthModal from './AuthModal';
 
-export default function WelcomePage({ onEnterAsPatient, onEnterAsTherapist, onOpenInsights }) {
+export default function WelcomePage({
+  onEnterAsPatient,
+  onEnterAsTherapist,
+  onNavigateToFindCare,
+  onOpenInsights,
+}) {
   const [authVisible, setAuthVisible] = useState(false);
   const [authRole, setAuthRole] = useState('patient');
   const [authMode, setAuthMode] = useState('signin');
@@ -60,12 +64,21 @@ export default function WelcomePage({ onEnterAsPatient, onEnterAsTherapist, onOp
             <TouchableOpacity onPress={() => openAuth('patient', 'signin')}>
               <Text style={styles.navLink}>Check-in</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => {
-              if (onOpenInsights) onOpenInsights();
-              else openAuth('patient', 'signin');
-            }}>
-              <Text style={styles.navLink}>Stress Insights</Text>
+
+            <TouchableOpacity
+              onPress={() => {
+                if (onNavigateToFindCare) {
+                  onNavigateToFindCare();
+                } else if (onOpenInsights) {
+                  onOpenInsights();
+                } else {
+                  openAuth('patient', 'signin');
+                }
+              }}
+            >
+              <Text style={styles.navLink}>Find Care</Text>
             </TouchableOpacity>
+
             <TouchableOpacity style={styles.signInBtn} onPress={() => openAuth('patient', 'signin')}>
               <Text style={styles.signInBtnText}>Sign In</Text>
             </TouchableOpacity>
