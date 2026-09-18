@@ -331,5 +331,19 @@ def test_patient_overview_no_entries():
     assert result["show_crisis_resources"] is False
 
 
+def test_ollama_reason_graceful_fallback():
+    from app.categorize import extract_reason_ollama, categorize_with_reason
+    # If Ollama is not running, extract_reason_ollama returns None cleanly without raising
+    reason = extract_reason_ollama("I have three deadlines this week and my manager keeps adding more work", "Work/Career")
+    assert reason is None or isinstance(reason, str)
+
+    # categorize_with_reason always provides a valid non-empty reason string
+    res = categorize_with_reason("I have three deadlines this week and my manager keeps adding more work")
+    assert res["category"] == "Work/Career"
+    assert isinstance(res["reason"], str)
+    assert len(res["reason"]) > 3
+
+
 import pytest
+
 

@@ -9,24 +9,21 @@ faking performance on categories it was never trained on. This module is
 the honest fix: a separate layer that answers "about what," while A's
 model answers "how stressed."
 
-Two paths, always both available:
-  1. LLM-based tagging (primary) — one structured-output call per
-     transcript, asks for JSON back.
-  2. Keyword matching (fallback) — zero dependencies, used automatically
-     if the LLM call fails, times out, or no API key is configured. This
-     keeps the demo from breaking live if the network or API has a bad
-     moment.
+Runs completely offline and free using local keyword taxonomy matching and
+heuristic trigger extraction. Zero paid API keys, zero external network calls.
 
-CANONICAL_CATEGORIES here is now the single source of truth for the
-taxonomy — therapists.json and match_therapists() should stay in sync with
-this list. Owning this list here (instead of waiting on Person A) is what
-unblocks the "get Person A's real category names" item from before.
+CANONICAL_CATEGORIES here is the single source of truth for the
+taxonomy — therapists.json and match_therapists() stay in sync with
+this list.
 """
 
-import json
 import logging
 import os
 import re
+import socket
+import time
+from typing import Optional
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -41,12 +38,39 @@ CANONICAL_CATEGORIES = [
     "Self-esteem/Identity",
 ]
 
-USE_LLM_CATEGORIZATION = os.getenv("USE_LLM_CATEGORIZATION", "true").lower() == "true"
+# Local Ollama configuration
+OLLAMA_BASE_URL = os.getenv("OLLAMA_BASE_URL", "http://127.0.0.1:11434")
+OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "llama3.2:1b")
+USE_OLLAMA_REASONING = os.getenv("USE_OLLAMA_REASONING", "true").lower() == "true"
+OLLAMA_TIMEOUT = float(os.getenv("OLLAMA_TIMEOUT", "5.0"))
 
-# --- fallback: keyword matching -------------------------------------------
-# Kept short and reasonably precise per category. This is a safety net, not
-# meant to be as accurate as the LLM path — it exists purely so a live demo
-# never hard-fails if the LLM call is slow/unavailable.
+_ollama_alive = None
+_last_check = 0.0
+
+
+def is_ollama_running() -> bool:
+    """Fast probe to check if local Ollama service is listening on port 11434.
+    Caches result for 15s to keep unit tests and offline requests instantaneous.
+    """
+    global _ollama_alive, _last_check
+    now = time.time()
+    if _ollama_alive is not None and (now - _last_check) < 15.0:
+        return _ollama_alive
+
+    _last_check = now
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    s.settimeout(0.15)
+    try:
+        s.connect(("127.0.0.1", 11434))
+        s.close()
+        _ollama_alive = True
+    except Exception:
+        _ollama_alive = False
+    return _ollama_alive
+
+
+# --- local keyword matching & reason extraction ----------------------------
+# Runs completely offline and locally without paid API credits.
 KEYWORDS = {
     "Work/Career": ["deadline", "manager", "workload", "meeting", "boss", "coworker",
                      "promotion", "fired", "job", "shift", "overtime", "project due"],
@@ -68,6 +92,7 @@ KEYWORDS = {
 
 
 def _categorize_keyword(transcript: str) -> dict:
+    """Categorizes the transcript and extracts a concise trigger reason completely offline."""
     lowered = transcript.lower()
     scores = {}
     matched_kws = {}
@@ -87,77 +112,66 @@ def _categorize_keyword(transcript: str) -> dict:
     return {"category": best_cat, "reason": reason}
 
 
-# --- primary: LLM-based tagging -------------------------------------------
+def extract_reason_ollama(transcript: str, category: str) -> Optional[str]:
+    """Extracts specific trigger reason using local Ollama (e.g. llama3.2:1b).
+    Runs 100% locally, zero paid API cost, zero internet dependency at inference time.
+    Returns None if Ollama is not running or times out, allowing clean fallback.
+    """
+    if not USE_OLLAMA_REASONING or not is_ollama_running():
+        return None
 
-_client = None
-
-
-def _get_openai_client():
-    global _client
-    if _client is None:
-        from openai import OpenAI
-        api_key = os.getenv("OPENAI_API_KEY")
-        if not api_key:
-            raise RuntimeError("OPENAI_API_KEY not set")
-        _client = OpenAI(api_key=api_key)
-    return _client
-
-
-def _categorize_llm(transcript: str) -> dict:
-    client = _get_openai_client()
-    categories_str = ", ".join(f'"{c}"' for c in CANONICAL_CATEGORIES)
-
-    resp = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {
-                "role": "system",
-                "content": (
-                    "You classify a short diary entry into exactly one topic category "
-                    f"from this fixed list: [{categories_str}], and identify the specific triggering reason. "
-                    "Respond with ONLY a valid JSON object in this exact shape: "
-                    "{\"category\": \"Work/Career\", \"reason\": \"manager assigning unmanageable workload\"} "
-                    "where 'reason' is a concise 3-8 word phrase explaining the specific trigger or cause of stress. "
-                    "Pick the single closest category even if the entry touches on more than one."
-                ),
-            },
-            {"role": "user", "content": transcript},
-        ],
-        max_tokens=60,
-        temperature=0,
+    prompt = (
+        f'In one short sentence (under 15 words), state the specific cause of stress in this diary entry, '
+        f'given it falls under the category "{category}". Only output the sentence, nothing else.\n\n'
+        f'Diary entry: "{transcript}"\n\n'
+        f'Cause:'
     )
 
-    raw = resp.choices[0].message.content.strip()
-    # strip markdown code fences if the model adds them despite instructions
-    raw = re.sub(r"^```(json)?|```$", "", raw.strip()).strip()
-    parsed = json.loads(raw)
-    category = parsed.get("category", "").strip()
-    reason = parsed.get("reason", "").strip()
-
-    if category not in CANONICAL_CATEGORIES:
-        raise ValueError(f"LLM returned an out-of-taxonomy category: {category!r}")
-
-    if not reason:
-        reason = f"trigger related to {category.lower()}"
-
-    return {"category": category, "reason": reason}
+    try:
+        response = requests.post(
+            f"{OLLAMA_BASE_URL}/api/generate",
+            json={
+                "model": OLLAMA_MODEL,
+                "prompt": prompt,
+                "stream": False,
+                "options": {"temperature": 0.3, "num_predict": 40},
+            },
+            timeout=OLLAMA_TIMEOUT,
+        )
+        if response.status_code == 200:
+            result = response.json()
+            raw_text = result.get("response", "").strip()
+            # Clean up leading 'Cause:' / 'Reason:' or quotes
+            cleaned = re.sub(r"^(cause|reason):\s*", "", raw_text, flags=re.IGNORECASE).strip(' "\'')
+            return cleaned if cleaned else None
+    except (requests.exceptions.RequestException, requests.exceptions.Timeout) as e:
+        logger.debug("Ollama reason extraction unavailable (%s)", e)
+        return None
+    return None
 
 
 # --- public entry points ---------------------------------------------------
 
 def categorize_with_reason(transcript: str) -> dict:
-    """Returns dict {'category': str, 'reason': str}. Tries the LLM path first
-    (if enabled and configured); falls back to keyword matching on any failure
-    so this function never raises and never blocks the pipeline."""
-    if USE_LLM_CATEGORIZATION:
-        try:
-            return _categorize_llm(transcript)
-        except Exception as e:
-            logger.warning("LLM categorization failed (%s); falling back to keyword matching.", e)
+    """Returns dict {'category': str, 'reason': str}.
+    Uses local keyword taxonomy for category matching, and enhances trigger reasoning
+    via local Ollama (Llama 3.2 1B) if Ollama is running.
+    Falls back gracefully to keyword trigger if Ollama is not running or times out.
+    """
+    kw_result = _categorize_keyword(transcript)
+    category = kw_result["category"]
+    reason = kw_result["reason"]
 
-    return _categorize_keyword(transcript)
+    # Try local Ollama reason extraction if available
+    ollama_reason = extract_reason_ollama(transcript, category)
+    if ollama_reason:
+        reason = ollama_reason
+
+    return {"category": category, "reason": reason}
 
 
 def categorize(transcript: str) -> str:
     """Convenience wrapper returning just the category string for backward compatibility."""
     return categorize_with_reason(transcript)["category"]
+
+
