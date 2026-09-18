@@ -1,0 +1,16 @@
+[
+  {"name": "Dr. Amara Chen", "specialty": "Work/Career", "tier": "standard"},
+  {"name": "Dr. James Okafor", "specialty": "Work/Career", "tier": "intensive"},
+  {"name": "Dr. Priya Nair", "specialty": "Relationship", "tier": "standard"},
+  {"name": "Dr. Marcus Webb", "specialty": "Relationship", "tier": "intensive"},
+  {"name": "Dr. Sofia Marín", "specialty": "Family", "tier": "standard"},
+  {"name": "Dr. Elena Petrova", "specialty": "Family", "tier": "intensive"},
+  {"name": "Dr. Daniel Kim", "specialty": "Health", "tier": "standard"},
+  {"name": "Dr. Grace Adeyemi", "specialty": "Health", "tier": "intensive"},
+  {"name": "Dr. Noah Bergström", "specialty": "Finances", "tier": "standard"},
+  {"name": "Dr. Layla Hassan", "specialty": "Academic", "tier": "standard"},
+  {"name": "Dr. Tom Whitfield", "specialty": "Academic", "tier": "intensive"},
+  {"name": "Dr. Ines Costa", "specialty": "Social", "tier": "standard"},
+  {"name": "Dr. Robert Nakamura", "specialty": "Other", "tier": "standard"},
+  {"name": "Dr. Hana Suzuki", "specialty": "Other", "tier": "intensive"}
+]
