@@ -26,14 +26,6 @@ export default function ProfileModal({
   const role = account?.role || (userId?.startsWith('th_') ? 'therapist' : 'patient');
   const email = account?.email || `${userId}@breadcrumbs.internal`;
 
-  const handleSelectPersona = (p) => {
-    if (onSwitchPersona) {
-      onSwitchPersona(p);
-    } else if (onSelectUser) {
-      onSelectUser(p.user_id);
-    }
-  };
-
   const handleDelete = async () => {
     const success = await deleteUserData(userId);
     if (success) {
@@ -132,70 +124,6 @@ export default function ProfileModal({
                 <Text style={styles.deleteSuccessText}>✓ {deleteMessage}</Text>
               </View>
             ) : null}
-          </View>
-
-          {/* Active Testing Persona Switcher */}
-          <View style={styles.personaCard}>
-            <Text style={styles.personaTitle}>🎭 Active Clinical Persona Switcher</Text>
-            <Text style={styles.personaDesc}>
-              Quickly switch your active profile to test different stress trajectory curves:
-            </Text>
-            <View style={styles.personaGrid}>
-              <TouchableOpacity
-                style={[
-                  styles.personaBtn,
-                  userId === 'demo_escalating' && styles.personaBtnActive,
-                ]}
-                onPress={() =>
-                  handleSelectPersona({
-                    user_id: 'demo_escalating',
-                    display_name: 'Alex Rivera',
-                    role: 'patient',
-                    email: 'alex@example.com',
-                  })
-                }
-              >
-                <Text style={styles.personaBtnTitle}>Alex</Text>
-                <Text style={styles.personaBtnSub}>Escalating</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.personaBtn,
-                  userId === 'demo_improving' && styles.personaBtnActive,
-                ]}
-                onPress={() =>
-                  handleSelectPersona({
-                    user_id: 'demo_improving',
-                    display_name: 'Jordan Taylor',
-                    role: 'patient',
-                    email: 'jordan@example.com',
-                  })
-                }
-              >
-                <Text style={styles.personaBtnTitle}>Jordan</Text>
-                <Text style={styles.personaBtnSub}>Improving</Text>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={[
-                  styles.personaBtn,
-                  userId === 'demo_flagged' && styles.personaBtnActive,
-                  { borderColor: '#DC2626' },
-                ]}
-                onPress={() =>
-                  handleSelectPersona({
-                    user_id: 'demo_flagged',
-                    display_name: 'Sam Harper',
-                    role: 'patient',
-                    email: 'sam@example.com',
-                  })
-                }
-              >
-                <Text style={[styles.personaBtnTitle, { color: '#B91C1C' }]}>Sam</Text>
-                <Text style={styles.personaBtnSub}>Flagged Alert</Text>
-              </TouchableOpacity>
-            </View>
           </View>
 
           {/* Sign Out Button */}
@@ -437,54 +365,6 @@ const styles = StyleSheet.create({
     color: '#15803D',
     fontWeight: '600',
     textAlign: 'center',
-  },
-  personaCard: {
-    backgroundColor: '#FFFDF7',
-    borderRadius: 18,
-    padding: 18,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(74, 46, 24, 0.08)',
-  },
-  personaTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#4A2E18',
-    marginBottom: 4,
-  },
-  personaDesc: {
-    fontSize: 12,
-    color: '#7C522D',
-    lineHeight: 18,
-    marginBottom: 12,
-  },
-  personaGrid: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  personaBtn: {
-    flex: 1,
-    backgroundColor: '#FDFBF7',
-    borderRadius: 10,
-    padding: 10,
-    borderWidth: 1.5,
-    borderColor: 'rgba(74, 46, 24, 0.12)',
-    alignItems: 'center',
-    cursor: 'pointer',
-  },
-  personaBtnActive: {
-    backgroundColor: '#F7EBD6',
-    borderColor: '#6D4330',
-  },
-  personaBtnTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#4A2E18',
-    marginBottom: 2,
-  },
-  personaBtnSub: {
-    fontSize: 10,
-    color: '#8D633D',
   },
   signOutBtn: {
     backgroundColor: '#FFFDF7',
