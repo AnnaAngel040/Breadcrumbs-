@@ -9,6 +9,7 @@ import {
   TextInput,
   Animated,
   ActivityIndicator,
+  Modal,
 } from 'react-native';
 
 import Mascot from './components/Mascot';
@@ -33,6 +34,7 @@ function HeroScreen({ account, onBack, onNavigateToFindCare, onSignOut, onSelect
   // Modals
   const [calendarVisible, setCalendarVisible] = useState(false);
   const [profileVisible, setProfileVisible] = useState(false);
+  const [crisisModalVisible, setCrisisModalVisible] = useState(false);
 
   // Recording & Input States
   const [isRecording, setIsRecording] = useState(false);
@@ -222,6 +224,12 @@ function HeroScreen({ account, onBack, onNavigateToFindCare, onSignOut, onSelect
       duration: 500,
       useNativeDriver: true,
     }).start();
+
+    const isAcute = entry?.is_flagged || entry?.show_crisis_resources ||
+      /(?:kill myself|want to die|kms|suicide|end it all|hit me|beat me|abused me|abusing me|domestic violence|physically hurt me|hurt myself|no point in living)/i.test(entry?.transcript || '');
+    if (isAcute) {
+      setCrisisModalVisible(true);
+    }
   };
 
   const formatSeconds = (sec) => {
@@ -371,24 +379,34 @@ function HeroScreen({ account, onBack, onNavigateToFindCare, onSignOut, onSelect
         )}
 
         {/* Patient-Safe Reflection Card (Zero Clinical Scores) */}
-        {lastResult && (
-          <Animated.View style={[styles.resultCard, { opacity: resultFadeAnim }]}>
-            <View style={styles.resultHeader}>
-              <Text style={styles.resultCheck}>✓ Check-in Logged</Text>
-              <Text style={styles.resultCategory}>📂 {lastResult.category}</Text>
-            </View>
-            <Text style={styles.resultMessageText}>
-              Thank you for sharing. Your reflection has been saved — small steps like this matter. 🌱
-            </Text>
-            <TouchableOpacity
-              style={styles.findCareActionBtn}
-              onPress={onNavigateToFindCare}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.findCareActionBtnText}>🌿 Explore Matched Care Practitioners →</Text>
-            </TouchableOpacity>
-          </Animated.View>
-        )}
+        {lastResult && (() => {
+          const score = lastResult.stress_score ?? 0.5;
+          const isStressor = Boolean(lastResult.is_flagged) ||
+            (lastResult.is_stressor !== undefined ? Boolean(lastResult.is_stressor) : (score >= 0.35));
+
+          return (
+            <Animated.View style={[styles.resultCard, { opacity: resultFadeAnim }]}>
+              <View style={styles.resultHeader}>
+                <Text style={styles.resultCheck}>✓ Check-in Logged</Text>
+                <Text style={styles.resultCategory}>📂 {lastResult.category}</Text>
+              </View>
+              <Text style={styles.resultMessageText}>
+                {isStressor
+                  ? 'We hear you — navigating this can feel heavy. Your reflection has been safely saved. 🌱'
+                  : 'Thank you for sharing. Your reflection has been saved — taking a moment to pause and reflect matters. ☀️'}
+              </Text>
+              {isStressor && (
+                <TouchableOpacity
+                  style={styles.findCareActionBtn}
+                  onPress={onNavigateToFindCare}
+                  activeOpacity={0.85}
+                >
+                  <Text style={styles.findCareActionBtnText}>🌿 Explore Matched Care Practitioners →</Text>
+                </TouchableOpacity>
+              )}
+            </Animated.View>
+          );
+        })()}
       </View>
 
       {/* Modals */}
@@ -410,6 +428,86 @@ function HeroScreen({ account, onBack, onNavigateToFindCare, onSignOut, onSelect
         onSignOut={onSignOut}
         backendOnline={backendOnline}
       />
+
+      {/* Immediate Emergency Crisis Helplines Dialog (India) */}
+      <Modal
+        visible={crisisModalVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setCrisisModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.crisisModalBox}>
+            <View style={styles.modalHeader}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                <Text style={{ fontSize: 20 }}>🛟</Text>
+                <Text style={[styles.modalHeaderTitle, { color: '#991B1B' }]}>Immediate Support Available (24/7)</Text>
+              </View>
+              <TouchableOpacity onPress={() => setCrisisModalVisible(false)}>
+                <Text style={styles.modalCloseIcon}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.crisisModalDesc}>
+              We noticed you might be going through an overwhelming or unsafe moment. You are not alone — free, confidential, 24/7 crisis support is available right now across India:
+            </Text>
+
+            <View style={styles.crisisOptionsList}>
+              {/* Tele-MANAS */}
+              <TouchableOpacity
+                style={styles.crisisOptionBtn}
+                onPress={() => {
+                  try { window.open('tel:14416', '_self'); } catch {}
+                }}
+              >
+                <Text style={styles.crisisOptionIcon}>📞</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.crisisOptionTitle}>Tele-MANAS: Call 14416</Text>
+                  <Text style={styles.crisisOptionSubtitle}>Govt of India 24/7 Toll-Free National Mental Health Helpline</Text>
+                </View>
+                <Text style={styles.crisisOptionArrow}>→</Text>
+              </TouchableOpacity>
+
+              {/* KIRAN */}
+              <TouchableOpacity
+                style={[styles.crisisOptionBtn, { borderColor: '#3B7A57' }]}
+                onPress={() => {
+                  try { window.open('tel:18005990019', '_self'); } catch {}
+                }}
+              >
+                <Text style={styles.crisisOptionIcon}>📞</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.crisisOptionTitle, { color: '#2D5E43' }]}>KIRAN: 1800-599-0019</Text>
+                  <Text style={styles.crisisOptionSubtitle}>Ministry of Social Justice 24/7 Helpline</Text>
+                </View>
+                <Text style={styles.crisisOptionArrow}>→</Text>
+              </TouchableOpacity>
+
+              {/* Vandrevala Foundation */}
+              <TouchableOpacity
+                style={styles.crisisOptionBtn}
+                onPress={() => {
+                  try { window.open('tel:+919999666555', '_self'); } catch {}
+                }}
+              >
+                <Text style={styles.crisisOptionIcon}>💬</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.crisisOptionTitle}>Vandrevala Foundation: 9999 666 555</Text>
+                  <Text style={styles.crisisOptionSubtitle}>24/7 Free Crisis Counseling &amp; WhatsApp Support</Text>
+                </View>
+                <Text style={styles.crisisOptionArrow}>→</Text>
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity
+              style={styles.closeCrisisModalBtn}
+              onPress={() => setCrisisModalVisible(false)}
+            >
+              <Text style={styles.closeCrisisModalBtnText}>I'm Safe / Close</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* Back to Welcome */}
       <TouchableOpacity style={styles.signOutBtn} onPress={onBack}>
@@ -810,6 +908,95 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     lineHeight: 18,
     marginTop: 4,
+  },
+
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(30, 15, 8, 0.65)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  crisisModalBox: {
+    backgroundColor: '#FFFDF9',
+    borderRadius: 24,
+    padding: 24,
+    width: '100%',
+    maxWidth: 500,
+    borderWidth: 1.5,
+    borderColor: '#FECACA',
+    shadowColor: '#991B1B',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.15,
+    shadowRadius: 24,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  modalHeaderTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#3B2313',
+  },
+  modalCloseIcon: {
+    fontSize: 16,
+    color: '#8C6239',
+    fontWeight: '700',
+    padding: 4,
+  },
+  crisisModalDesc: {
+    fontSize: 13,
+    color: '#5C3818',
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  crisisOptionsList: {
+    gap: 10,
+    marginBottom: 16,
+  },
+  crisisOptionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#FAF1E6',
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1.5,
+    borderColor: '#EBDCCE',
+  },
+  crisisOptionIcon: {
+    fontSize: 20,
+  },
+  crisisOptionTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#991B1B',
+    marginBottom: 2,
+  },
+  crisisOptionSubtitle: {
+    fontSize: 11,
+    color: '#7D5838',
+  },
+  crisisOptionArrow: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#8C6239',
+  },
+  closeCrisisModalBtn: {
+    backgroundColor: '#FAF1E6',
+    borderRadius: 12,
+    paddingVertical: 12,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#EBDCCE',
+  },
+  closeCrisisModalBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#5C3A21',
   },
 
   signOutBtn: {

@@ -20,12 +20,15 @@ class EntryOut(BaseModel):
     entry_id: str
     user_id: str
     date: str
-    transcript: str
+    transcript: Optional[str] = None
     category: str
     reason: Optional[str] = None
     stress_score: float
     confidence: float
     similarity_group_id: Optional[str] = None
+    is_flagged: Optional[bool] = False
+    show_crisis_resources: Optional[bool] = False
+    is_stressor: Optional[bool] = False
 
 
 class ThreadOut(BaseModel):

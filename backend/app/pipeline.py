@@ -49,12 +49,19 @@ def process_text_entry(user_id: str, transcript: str) -> dict:
         fused = fuse_stress_score(stress_score, transcript)
         stress_score = fused["fused_stress_score"]
 
+    from app.risk_keywords import check_acute_risk_keywords
+    is_flagged = check_acute_risk_keywords(transcript)
+
+    # Privacy / Zero Raw Data Retention: Discard raw transcript, store only structured metrics
     entry = database.insert_entry(
         user_id=user_id,
-        transcript=transcript,
         category=category,
         reason=reason,
         stress_score=stress_score,
         confidence=prediction["confidence"],
+        transcript=None,
     )
+    entry["is_flagged"] = is_flagged
+    entry["show_crisis_resources"] = is_flagged
+    entry["is_stressor"] = bool(prediction.get("is_stressor") or stress_score >= 0.40 or is_flagged)
     return entry

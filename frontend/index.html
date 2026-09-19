@@ -26,6 +26,21 @@
         box-sizing: border-box;
         -webkit-tap-highlight-color: transparent;
       }
+      /* Custom smooth scrollbar */
+      ::-webkit-scrollbar {
+        width: 8px;
+        height: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: #FAF5ED;
+      }
+      ::-webkit-scrollbar-thumb {
+        background: #D9C3B0;
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #B89A82;
+      }
       /* Custom font classes available to React Native style definitions */
       .font-serif {
         font-family: 'Fraunces', Georgia, serif !important;
