@@ -586,7 +586,6 @@ export default function App() {
       <WelcomePage
         onEnterAsPatient={handleEnterAsPatient}
         onEnterAsTherapist={handleEnterAsTherapist}
-        onNavigateToFindCare={() => setScreen('findCare')}
       />
     );
   }
