@@ -67,9 +67,11 @@ def refine_threads_with_similarity(
 
     for entry in category_entries[1:]:
         placed = False
+        text_a = entry.get("reason") or entry.get("transcript") or ""
         for sub_thread in sub_threads:
             latest_in_group = sub_thread[-1]
-            if _evaluate_similarity(similarity_fn, entry.get("transcript", ""), latest_in_group.get("transcript", ""), threshold):
+            text_b = latest_in_group.get("reason") or latest_in_group.get("transcript") or ""
+            if _evaluate_similarity(similarity_fn, text_a, text_b, threshold):
                 sub_thread.append(entry)
                 placed = True
                 break
