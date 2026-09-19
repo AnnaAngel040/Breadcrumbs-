@@ -20,7 +20,7 @@ class EntryOut(BaseModel):
     entry_id: str
     user_id: str
     date: str
-    transcript: str
+    transcript: Optional[str] = None
     category: str
     reason: Optional[str] = None
     stress_score: float
