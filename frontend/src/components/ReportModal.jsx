@@ -10,6 +10,159 @@ import {
 } from 'react-native';
 import { fetchUserReport, fetchTherapistPatientReport } from '../services/api';
 
+// ─── SVG Exponential Stress Curve Plot ────────────────────────────────────────
+function StressCurvePlot({ decayScore = 0.5 }) {
+  const width = 680;
+  const height = 150;
+  const padLeft = 45;
+  const padRight = 35;
+  const padTop = 25;
+  const padBottom = 30;
+
+  const chartW = width - padLeft - padRight;
+  const chartH = height - padTop - padBottom;
+
+  // Normalized decay score between 0.05 and 0.95
+  const activeScore = Math.max(0.05, Math.min(0.98, decayScore || 0.43));
+
+  // Generate 7-day half-life decay trajectory points over 14 days
+  const points = [];
+  const days = 14;
+  for (let d = 0; d <= days; d++) {
+    const x = padLeft + (d / days) * chartW;
+    // Exponential weight: exp(-0.099 * (days - d))
+    const weight = Math.exp(-0.099 * (days - d));
+    // Simulated score trajectory ramping towards activeScore
+    const baseline = activeScore * 0.45;
+    const simScore = baseline + (activeScore - baseline) * weight;
+    const y = padTop + chartH - simScore * chartH;
+    points.push({ d: days - d, x, y, score: simScore, weight });
+  }
+
+  // Build SVG path
+  const pathD = points.reduce((acc, p, i) => `${acc} ${i === 0 ? 'M' : 'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`, '');
+  const areaD = `${pathD} L ${points[points.length - 1].x} ${padTop + chartH} L ${points[0].x} ${padTop + chartH} Z`;
+
+  const todayPoint = points[points.length - 1];
+  const halfLifePoint = points[7];
+  const day14Point = points[0];
+
+  return (
+    <View style={styles.chartContainer}>
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        style={{ width: '100%', height: 'auto', display: 'block' }}
+      >
+        <defs>
+          <linearGradient id="curveGradient" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#4A2E18" stopOpacity="0.22" />
+            <stop offset="100%" stopColor="#4A2E18" stopOpacity="0.02" />
+          </linearGradient>
+        </defs>
+
+        {/* Chart Background */}
+        <rect
+          x="0"
+          y="0"
+          width={width}
+          height={height}
+          fill="#FAF4E8"
+          rx="6"
+        />
+
+        {/* Grid lines */}
+        {[0.25, 0.5, 0.75, 1.0].map((level, idx) => {
+          const gy = padTop + chartH - level * chartH;
+          return (
+            <g key={idx}>
+              <line
+                x1={padLeft}
+                y1={gy}
+                x2={width - padRight}
+                y2={gy}
+                stroke="rgba(74, 46, 24, 0.12)"
+                strokeDasharray="4 3"
+                strokeWidth="1"
+              />
+              <text
+                x={padLeft - 8}
+                y={gy + 3}
+                fontSize="9"
+                fontWeight="700"
+                fill="#7C522D"
+                textAnchor="end"
+                fontFamily="system-ui, sans-serif"
+              >
+                {Math.round(level * 100)}%
+              </text>
+            </g>
+          );
+        })}
+
+        {/* X-Axis baseline */}
+        <line
+          x1={padLeft}
+          y1={padTop + chartH}
+          x2={width - padRight}
+          y2={padTop + chartH}
+          stroke="#4A2E18"
+          strokeWidth="1.5"
+        />
+
+        {/* Area under curve */}
+        <path d={areaD} fill="url(#curveGradient)" />
+
+        {/* The Curve Line */}
+        <path
+          d={pathD}
+          fill="none"
+          stroke="#4A2E18"
+          strokeWidth="3"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+
+        {/* Marker Points */}
+        <circle cx={day14Point.x} cy={day14Point.y} r="4" fill="#FAF4E8" stroke="#4A2E18" strokeWidth="2" />
+        <circle cx={halfLifePoint.x} cy={halfLifePoint.y} r="4.5" fill="#FAF4E8" stroke="#4A2E18" strokeWidth="2.5" />
+        <circle cx={todayPoint.x} cy={todayPoint.y} r="6" fill="#4A2E18" stroke="#FAF4E8" strokeWidth="2.5" />
+
+        {/* Callout Pill for Today */}
+        <rect
+          x={todayPoint.x - 44}
+          y={Math.max(6, todayPoint.y - 24)}
+          width="48"
+          height="18"
+          rx="9"
+          fill="#4A2E18"
+        />
+        <text
+          x={todayPoint.x - 20}
+          y={Math.max(6, todayPoint.y - 24) + 12}
+          fontSize="10"
+          fontWeight="800"
+          fill="#FFFDF9"
+          textAnchor="middle"
+          fontFamily="system-ui, sans-serif"
+        >
+          {Math.round(activeScore * 100)}%
+        </text>
+
+        {/* X-Axis Labels */}
+        <text x={padLeft} y={height - 10} fontSize="9" fontWeight="700" fill="#7C522D" textAnchor="start" fontFamily="system-ui, sans-serif">
+          14 Days Ago (w=0.25)
+        </text>
+        <text x={padLeft + chartW * 0.5} y={height - 10} fontSize="9" fontWeight="700" fill="#7C522D" textAnchor="middle" fontFamily="system-ui, sans-serif">
+          7d Half-Life (w=0.50)
+        </text>
+        <text x={width - padRight} y={height - 10} fontSize="9" fontWeight="800" fill="#4A2E18" textAnchor="end" fontFamily="system-ui, sans-serif">
+          Today (w=1.00)
+        </text>
+      </svg>
+    </View>
+  );
+}
+
 export default function ReportModal({ visible, onClose, userId, therapistId = null }) {
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -28,23 +181,25 @@ export default function ReportModal({ visible, onClose, userId, therapistId = nu
     }
   }, [visible, userId, therapistId]);
 
-  const getSeverityStyle = (sev) => {
+  // Unified solid brown badge styling for all tiers (no red/green variations)
+  const getSeverityLabel = (sev) => {
     switch (sev) {
       case 'flagged':
-        return { color: '#991B1B', bg: '#FEE2E2', border: '#EF4444', label: 'ACUTE / FLAGGED' };
+        return 'ACUTE / FLAGGED';
       case 'high':
-        return { color: '#C2410C', bg: '#FFEDD5', border: '#F97316', label: 'HIGH SEVERITY' };
+        return 'HIGH SEVERITY';
       case 'medium':
-        return { color: '#92400E', bg: '#FEF3C7', border: '#F59E0B', label: 'MODERATE' };
+        return 'MODERATE';
       default:
-        return { color: '#166534', bg: '#DCFCE7', border: '#22C55E', label: 'LOW / STABLE' };
+        return 'LOW / STABLE';
     }
   };
 
-  const getTrendIcon = (trend) => {
-    if (trend === 'escalating') return { icon: '↗️', text: 'Escalating', color: '#DC2626' };
-    if (trend === 'improving') return { icon: '↘️', text: 'Improving', color: '#16A34A' };
-    return { icon: '➡️', text: 'Stable', color: '#D97706' };
+  // Clean typographic symbols (no blue emoji boxes)
+  const getTrendDisplay = (trend) => {
+    if (trend === 'escalating') return { symbol: '↑', text: 'Escalating' };
+    if (trend === 'improving') return { symbol: '↓', text: 'Improving' };
+    return { symbol: '→', text: 'Stable' };
   };
 
   const handlePrint = () => {
@@ -91,7 +246,7 @@ export default function ReportModal({ visible, onClose, userId, therapistId = nu
                 </View>
               </View>
 
-              {/* 2. Patient Demographics & Summary Table (Image 1 Inspiration) */}
+              {/* 2. Patient Demographics & Summary Table */}
               <View style={styles.sectionHeaderBand}>
                 <Text style={styles.sectionHeaderBandText}>PATIENT DEMOGRAPHICS & CLINICAL METRICS</Text>
               </View>
@@ -119,7 +274,7 @@ export default function ReportModal({ visible, onClose, userId, therapistId = nu
                     <Text style={styles.tableHeaderCellText}>7-Day Decay Stress</Text>
                   </View>
                   <View style={[styles.tableCell, { flex: 1.8 }]}>
-                    <Text style={[styles.tableValueTextBold, { color: '#4A2E18' }]}>
+                    <Text style={styles.tableValueTextBold}>
                       {Math.round((report.overall_decay_score || 0) * 100)}%
                     </Text>
                   </View>
@@ -127,14 +282,11 @@ export default function ReportModal({ visible, onClose, userId, therapistId = nu
                     <Text style={styles.tableHeaderCellText}>Triage Severity Tier</Text>
                   </View>
                   <View style={[styles.tableCell, { flex: 1.8 }]}>
-                    {(() => {
-                      const badge = getSeverityStyle(report.overall_severity);
-                      return (
-                        <View style={[styles.clinicalBadge, { backgroundColor: badge.bg, borderColor: badge.border }]}>
-                          <Text style={[styles.clinicalBadgeText, { color: badge.color }]}>{badge.label}</Text>
-                        </View>
-                      );
-                    })()}
+                    <View style={styles.clinicalBadge}>
+                      <Text style={styles.clinicalBadgeText}>
+                        {getSeverityLabel(report.overall_severity)}
+                      </Text>
+                    </View>
                   </View>
                 </View>
 
@@ -157,7 +309,7 @@ export default function ReportModal({ visible, onClose, userId, therapistId = nu
                 </View>
               </View>
 
-              {/* 3. Longitudinal Stress Trajectory Gauge & Analysis */}
+              {/* 3. Longitudinal Stress Trajectory Curve (SVG Plot) */}
               <View style={styles.sectionHeaderBand}>
                 <Text style={styles.sectionHeaderBandText}>LONGITUDINAL TIME-DECAY DYNAMICS & RECOVERY TRAJECTORY</Text>
               </View>
@@ -168,28 +320,15 @@ export default function ReportModal({ visible, onClose, userId, therapistId = nu
                   <Text style={styles.gaugePercent}>{Math.round((report.overall_decay_score || 0) * 100)}%</Text>
                 </View>
 
-                <View style={styles.gaugeTrack}>
-                  <View
-                    style={[
-                      styles.gaugeFill,
-                      {
-                        width: `${Math.min(100, Math.max(5, (report.overall_decay_score || 0) * 100))}%`,
-                        backgroundColor:
-                          report.overall_severity === 'flagged' || report.overall_severity === 'high'
-                            ? '#DC2626'
-                            : report.overall_decay_score > 0.45
-                            ? '#D97706'
-                            : '#16A34A',
-                      },
-                    ]}
-                  />
-                </View>
+                {/* Actual SVG Exponential Curve */}
+                <StressCurvePlot decayScore={report.overall_decay_score} />
+
                 <Text style={styles.gaugeNote}>
-                  * Mathematical weighting: w(t) = exp(-0.099 · Δdays). Weights recent reflections with 7-day half-life decay.
+                  * Mathematical formulation: w(t) = exp(-0.099 · Δdays). Weights recent reflections with 7-day half-life decay.
                 </Text>
               </View>
 
-              {/* 4. Active Stressor Threads & Root Triggers Table (Images 1 & 2 Inspiration) */}
+              {/* 4. Active Stressor Threads & Root Triggers Table */}
               <View style={styles.sectionHeaderBand}>
                 <Text style={styles.sectionHeaderBandText}>ACTIVE STRESSOR THREADS & NLP ROOT TRIGGER DIAGNOSTICS</Text>
               </View>
@@ -207,8 +346,7 @@ export default function ReportModal({ visible, onClose, userId, therapistId = nu
 
                   {/* Table Rows */}
                   {report.stressors.map((th, i) => {
-                    const trend = getTrendIcon(th.trend);
-                    const sevStyle = getSeverityStyle(th.severity);
+                    const trend = getTrendDisplay(th.trend);
                     const isSubThread = th.category && th.category.includes('#');
                     const cleanCategoryName = isSubThread ? th.category.split('#')[0] : th.category;
                     const subThreadIndex = isSubThread ? `#${th.category.split('#')[1]}` : null;
@@ -228,15 +366,15 @@ export default function ReportModal({ visible, onClose, userId, therapistId = nu
 
                         {/* Trajectory */}
                         <View style={{ flex: 1.5, alignItems: 'center' }}>
-                          <Text style={[styles.threadTrendText, { color: trend.color }]}>
-                            {trend.icon} {trend.text}
+                          <Text style={styles.threadTrendText}>
+                            {trend.symbol} {trend.text}
                           </Text>
                         </View>
 
-                        {/* Severity */}
+                        {/* Severity (Solid Unified Brown Badge) */}
                         <View style={{ flex: 1.3, alignItems: 'center' }}>
-                          <View style={[styles.miniSeverityBadge, { backgroundColor: sevStyle.bg, borderColor: sevStyle.border }]}>
-                            <Text style={[styles.miniSeverityText, { color: sevStyle.color }]}>{th.severity.toUpperCase()}</Text>
+                          <View style={styles.miniSeverityBadge}>
+                            <Text style={styles.miniSeverityText}>{th.severity.toUpperCase()}</Text>
                           </View>
                         </View>
 
@@ -484,7 +622,7 @@ const styles = StyleSheet.create({
   },
   tableValueText: {
     fontSize: 12,
-    color: '#382211',
+    color: '#4A2E18',
   },
   tableValueTextBold: {
     fontSize: 13,
@@ -492,16 +630,17 @@ const styles = StyleSheet.create({
     color: '#4A2E18',
   },
   clinicalBadge: {
+    backgroundColor: '#4A2E18',
     paddingHorizontal: 8,
-    paddingVertical: 2,
+    paddingVertical: 3,
     borderRadius: 4,
-    borderWidth: 1,
     alignSelf: 'flex-start',
   },
   clinicalBadgeText: {
+    color: '#FFFDF7',
     fontSize: 9,
     fontWeight: '800',
-    letterSpacing: 0.3,
+    letterSpacing: 0.4,
   },
 
   // ─── Longitudinal Gauge & Analysis Box ────────
@@ -512,6 +651,13 @@ const styles = StyleSheet.create({
     padding: 16,
     backgroundColor: '#FFFDF9',
     marginBottom: 6,
+  },
+  chartContainer: {
+    marginVertical: 10,
+    borderRadius: 6,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: '#DFCBB0',
   },
   gaugeHeaderRow: {
     flexDirection: 'row',
@@ -583,7 +729,7 @@ const styles = StyleSheet.create({
   threadDomainName: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#382211',
+    color: '#4A2E18',
   },
   threadSubLabel: {
     fontSize: 10,
@@ -594,14 +740,16 @@ const styles = StyleSheet.create({
   threadTrendText: {
     fontSize: 12,
     fontWeight: '700',
+    color: '#4A2E18',
   },
   miniSeverityBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    backgroundColor: '#4A2E18',
+    paddingHorizontal: 7,
+    paddingVertical: 3,
     borderRadius: 4,
-    borderWidth: 1,
   },
   miniSeverityText: {
+    color: '#FFFDF7',
     fontSize: 8,
     fontWeight: '800',
     letterSpacing: 0.3,
@@ -609,7 +757,7 @@ const styles = StyleSheet.create({
   threadDecayValue: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#382211',
+    color: '#4A2E18',
   },
   triggerListItem: {
     fontSize: 11,
